@@ -4,6 +4,7 @@
 #include <1wire.h>
 #include "robowater.h"
 #include "spd1820.h"
+#include "menu.h"
 // #define NODEBUG             // Комментируя эту строку, даем возможность компилятору включить отладочный сервис
 /* #ifndef NODEBUG
 // Функция печатающая значение __ds1820_scratch_pad
