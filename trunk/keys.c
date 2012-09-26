@@ -25,7 +25,10 @@ struct st_key {
     {-1, 0, 0, 0, 0, 0, 0x33, 2},     // [4] KEY_ALARM1 PINC.2
     {-1, 0, 0, 0, 0, 0, 0x33, 4},     // [5] KEY_ALARM2 PINC.4
     {-1, 0, 0, 0, 0, 0, 0x36, 1}      // [6] KEY_FILTER PINB.1
-    
+    // PINA = 0x39, PORTA = 0x3B
+    // PINB = 0x36, PORTB = 0x38
+    // PINC = 0x33, PORTC = 0x35
+    // PIND = 0x30, PORTD = 0x32    
 };
 // —четчик срабатываний таймера 1
 unsigned char t_key = 0; 
