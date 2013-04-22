@@ -31,12 +31,13 @@
 #define ALL_ALERTS 12
 #define TIMER_INACTIVE 60      // Задается в кол-ве полсекундных интервалов
 #define ENTER_CANCEL_OVERFLOW 2      // Задается в кол-ве полсекундных интервалов
-//#define TIME_START 300                // Время старта Задается в кол-ве полсекундных интервалов
+#define TIME_START 180                // Время старта Задается в кол-ве полсекундных интервалов
 #define TIME_STOP 10                 // Время остановки Задается в кол-ве полсекундных интервалов
-#define TIME_COOL_STOP 20            // Время таймаута для регулировки температуры калорифера в режиме СТОП
+#define TIME_COOL_STOP 60            // Время таймаута для регулировки температуры калорифера в режиме СТОП
 #define TIME_BUZ1 1                  // Время Звука 1
 #define TIME_BUZ2 3                  // Время Звука 2
 #define STRLENGTH 16                // Длина строки параметра
+#define TIME_COOLING_MAX 15       //время задержки включения охладителя секунд  
 #define COUNT_FAN_MAX 5          // Максимальное количество осчетов для изменения оборотов вентилятора 
 #define FAN_SPEED_MIN 102             // Минимальный предел оборотов вентилятора (40% = 20 Герц )
 #define FAN_SPEED_STEP 10            // Шаг изменения оборотов вентилятора
@@ -44,10 +45,12 @@
 #define FAN_SPEED_T_DOWN 200
 #define MOTOR PORTD.4    // Порт.Пин вентилятора
 #define POMP PORTD.5     // Порт.Пин насоса
+//#define COOLING1 PORTD.7     // Порт.Пин Охладителя 1
 #define PWM_MIN 0        // Минимальное управляющее воздействие на двигатель
-#define PWM_MAX 255      // Максимальное управляющее воздействие на двигатель
-#define TA_IN_NOLIMIT 500L      // Окончание ограничения температуры воздуха на входе (500 = +5 С)
-#define TAP_ANGLE_LIMIT 78.0    // Ограничение закрытия трехходового крана при температуре воздуха TA_in_Min (ШИМ для 20% = 51: для 30% = 78)) 
+#define PWM_MAX 245      // Максимальное управляющее воздействие на двигатель П1=249 П2=245
+#define TA_IN_NOLIMIT 500L      //500L Окончание ограничения температуры воздуха на входе (500 = +5 С)
+#define TAP_ANGLE_LIMIT 78   //78.0 Ограничение закрытия трехходового крана при температуре воздуха TA_in_Min (ШИМ для 20% = 51: для 30% = 78))
+//#define TAP_PWM_LIMIT 50   // Ограничение закрытия трехходового по напряжению снизу (ШИМ для 20% = 51: для 30% = 78)) 
 #define MAX_ACCURACY 0b10//0b01       // Точность для термометров в бинарном коде: 0b11 = 0.0625, 0b10 = 0.125, 0b01 = 0.25, 0b00 = 0.5 
 #define MAX_OFFLINES 5
 #define ENGINEERING 5
@@ -98,8 +101,8 @@ extern struct st_eeprom_par {
     byte tap_angle, fan_speed, ADC1, ADC2;        // 0x7F, 205, 0x7F, 0x7F, [4]
     int Ku, Ki, Kd;                             // 10, 0, 0 [6]
     int T_z, T_int;                             // 300, 100 [4] Время задержки, Время интегрирования
-    int TW_out_Min, TW_out_Stop;                // 1600, 5000,
-    int TA_in_Min, TA_out_Min, TA_out_prs;    //-1500, 1500, 2200   [10]
+    int TW_out_Min, TW_out_Stop;                // 1500, 5000,
+    int TA_in_Min, TA_out_Min, TA_out_prs;    //-1500, 1000, 2200   [10]
     byte alert_status[ALL_ALERTS];           // 0) Тревога (0 - нет тревоги, > 0 - количество необработанных тревог) [12]
     byte season;          // Сезон года (?)      [1]
     byte alarm;           // Позиция текущего alarm в EEPROM [1]
@@ -121,6 +124,8 @@ extern struct st_mode {
     int k_angle_limit;   // 7) Коеффициент пересчета угла ограничения водяного крана в зимний период
     byte ufo[9];          // 8) Неопознанный термометр (-ы)
     byte print;           // 9) Печать показаний системы регулирования
+    byte cooling1;        // 10) Охладитель 1
+    byte cooling2;        // 11) Охладитель 2
 } mode ;
 extern enum en_event event;        // Текущее событие в системе
 // Описание функций
@@ -138,6 +143,7 @@ extern unsigned int timer_start;
 extern byte timer_stop;
 extern byte timer_fan;
 extern byte count_fan;
+extern int time_cooling;
 //extern byte fan_speed;
 // extern unsigned char key_treated[7] = {0, 0, 0, 0, 0, 0, 0};
 #endif

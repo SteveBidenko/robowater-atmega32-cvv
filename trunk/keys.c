@@ -28,7 +28,7 @@ struct st_key {
     // PINA = 0x39, PORTA = 0x3B
     // PINB = 0x36, PORTB = 0x38
     // PINC = 0x33, PORTC = 0x35
-    // PIND = 0x30, PORTD = 0x32    
+    // PIND = 0x30, PORTD = 0x32
 };
 // —четчик срабатываний таймера 1
 unsigned char t_key = 0; 

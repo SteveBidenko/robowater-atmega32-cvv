@@ -61,11 +61,11 @@ struct st_parameter settings[NUM_SETTINGS]={
     {3500, e_water, 1, 25},         // [1] температура воды СТОП TW_out_Stop
     {1000, e_water, 1, 26},         // [2] температура воды выход TW_out_Min
     {1500, e_room, 1, 27},          // [3] температура воздуха мин TA_out_Min
-    {30, e_stime, 1, 28},           // [4] время прогрева T_z ?
-    {10, e_stime, 1, 29},           // [5] время интегрирования T_int
+    {30, e_stime, 1, 28},           // [4] время интегрирования лето T_z ?
+    {10, e_stime, 1, 29},           // [5] время интегрирования зима T_int
     {1, e_coef, 1, 30},             // [6] Коэффициэнт усиления Ku
-    {0, e_coef, 1, 31},             // [7] Коэффициэнт Интегрирования Ki
-    {0, e_coef, 1, 32},             // [8] Коэффициэнт Дифференцирования Kd
+    {0, e_coef, 1, 31},             // [7] Дельта лето Ki
+    {0, e_coef, 1, 32},             // [8] Дельта зима Kd
     {0, e_temperature, 1, 33},      // [9] Смещение Ta2
     {0, e_scale, 1, 34},            // [10] Множитель Ta2
     {0, e_temperature, 1, 35},      // [11] Смещение Ta1
@@ -118,11 +118,11 @@ flash lcd_str all_menu_str[] = {
         "TW STOP ",    // [24] TW_out_Stop
         "TW Min ",     // [25] TW_out_Min
         "TA Min ",     // [26] TA_out_Min
-        "ПРОГРЕВ ",    // [27] T_z
-        "ВР.ИНТ. ",     // [28] T_int
+        "ВР,Лето ",    // [27] T_z
+        "ВР.Зима ",     // [28] T_int
         "КУ=",         // [29]
-        "КИ=",         // [30]
-        "КД=",         // [31]
+        "Дt Лето=",         // [30]
+        "Дt Зима=",         // [31]
         "См.П.=",      // [32] 0xFE
         "Шк.П.=",     // [33] 0xFE
         "См.Ул.=",    // [34] 0xFD
@@ -292,12 +292,20 @@ char *par_str(struct st_parameter *st_pointer, unsigned char only_val, int pr_da
             break;
         case e_percent:
             // Если указан тип проценты, то печатаем как проценты
-            sprintf(linestr, "%s%u%%", pr_name, (pr_data*100)/0xFF);
+            if (pr_data <= prim_par.tap_angle ) pr_data = prim_par.tap_angle;
+            if (pr_data >= PWM_MAX ) pr_data = PWM_MAX; 
+            sprintf(linestr, "%s%u%%", pr_name, ((pr_data -  prim_par.tap_angle)*100)/(PWM_MAX -  prim_par.tap_angle));
             //sprintf(linestr, "%s%u%%", pr_name, pr_data);
             break;
+         //case e_percent:
+            // Если указан тип проценты, то печатаем как проценты
+            //sprintf(linestr, "%s%u%%", pr_name, (pr_data*100)/0xFF);
+            //sprintf(linestr, "%s%u%%", pr_name, pr_data);
+         //   break;    
         case e_coef:
             // Если указан тип коэффициент, то печатаем как просто число
-            sprintf(linestr, "%s%u", pr_name, pr_data);
+            sprintf(linestr, "%s%u.%-01u", pr_name,  abs(pr_data)/10, abs(pr_data%10));
+            //sprintf(linestr, "%s%u", pr_name, pr_data);
             break;
         case e_scale:
             // Если указан тип шкалы, то печатаем как знаковый байт (-128..127)
@@ -574,8 +582,10 @@ void lcd_edit(signed char direction) {
             // Изменение порцентов идет с шагом +/-1 %
             curr_menu.val_data += direction;
             //  curr_menu.val_data += 3*direction;
-            if (curr_menu.val_data > 0xFF) curr_menu.val_data = 0;
-            if (curr_menu.val_data < 0) curr_menu.val_data = 0xFF;
+            //if (curr_menu.val_data > 0xFF) curr_menu.val_data = 0;
+            //if (curr_menu.val_data < 0) curr_menu.val_data = 0xFF;
+            if (curr_menu.val_data >= PWM_MAX) curr_menu.val_data = PWM_MAX;
+            if (curr_menu.val_data <= prim_par.tap_angle) curr_menu.val_data = prim_par.tap_angle;
             break;
         case e_coef:
             curr_menu.val_data += direction;
