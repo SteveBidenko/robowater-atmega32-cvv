@@ -57,6 +57,7 @@ unsigned int timer_start = 0;
 byte timer_stop = 0;
 byte timer_fan = 0;
 byte count_fan = 0;
+int time_cooling = 0;
 
 // Ежесекундное прерывание
 interrupt [EXT_INT2] void ext_int2_isr(void) {
@@ -104,6 +105,7 @@ interrupt [EXT_INT2] void ext_int2_isr(void) {
     ADC_VAR2 = read_adc(0)/4;
     ADC_VAR1 = read_adc(1)/4;
     if (time_integration) time_integration--;
+    if (time_cooling ) time_cooling-- ; 
     #ifndef NODEBUG
     // printf ("конец в %02u:%02u\r\n", s_dt.cMM, s_dt.cSS);
     #endif
@@ -128,10 +130,11 @@ interrupt [TIM1_OVF] void timer1_ovf_isr(void) {
     update_signal_status();
     if (t_key) t_key--;
 }
-// Timer 2 overflow interrupt service routine
+//Timer 2 overflow interrupt service routine
 interrupt [TIM2_OVF] void timer2_ovf_isr(void) {
 // Нельзя использовать. Задействовано для PWM
 }
+
 #define ADC_VREF_TYPE 0xC0
 // Read the AD conversion result
 unsigned int read_adc(unsigned char adc_input) {
@@ -197,8 +200,8 @@ void init(void) {
     PORTA=0x00; DDRA=0xFC;
 
     // Port B initialization
-    /* Func7=Out Func6=Out Func5=Out Func4=Out Func3=Out Func2=In Func1=In Func0=In
-    // State7=0 State6=0 State5=0 State4=0 State3=0 State2=P State1=P State0=P
+    /* Func7=Out Func6=Out Func5=Out Func4=Out Func3=Out Func2=In Func1=Out Func0=In
+    // State7=0 State6=0 State5=0 State4=0 State3=0 State2=P State1=0 State0=P
     */
     PORTB=0x07; DDRB=0xF8;
 
@@ -251,7 +254,10 @@ void init(void) {
     // OC2 output: Inverted PWM
     */
     // ASSR=0x00; TCCR2=0x7E; TCNT2=0x00; OCR2=0x00;
-    ASSR=0x00; TCCR2=0x6c; TCNT2=0x00; OCR2=0x00;
+    
+    ASSR=0x00; 
+    TCCR2=0x6c; TCNT2=0x00; OCR2=0x00;//  Это был ПВМ
+    
     // External Interrupt(s) initialization
     /*
     INT0: On INT0 Mode: Falling Edge

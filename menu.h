@@ -105,5 +105,6 @@ extern void lcd_edit(signed char);
 extern char *param_str(unsigned char, struct st_parameter parameter[]);
 extern char *par_str(struct st_parameter *, unsigned char, int);
 extern char *getmenustr(unsigned char menu_num_pp);
+//extern void calc_percent
 // extern unsigned char next_menu(signed char *menu_level, signed char menu_choice);
 #endif

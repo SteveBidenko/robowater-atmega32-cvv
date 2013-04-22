@@ -27,16 +27,16 @@
 // TA_out_Min -Температура Воздуха на выходе мин +15 С.
 // TA_out_prs -Температура Воздуха на выходе установленная +20 С.(Заданная)
 unsigned char key_treated[7] = {0,0,0,0,0,0,0} ; 
-struct st_mode mode = {0, 0, 0, 0, 0, 0, 1, 0.0,0};  // Текущий режим работы
+struct st_mode mode = {0, 0, 0, 0, 0, 0, 1, 0.0,0,0,0};  // Текущий режим работы
 struct st_datetime s_dt;
 // Начальные установки структуры основных переменных
 struct st_eeprom_par prim_par={
     {{(int)0, 0}, {(int)0, 0}, {(int)0, 0}, {(int)0, 0}},
-    0xFF, 205, 0x7F, 0x7F,
-    (int)10, (int)0, (int)0,
+    48, 205, 0x7F, 0x00,                                   // П1=50,П2=50,П3=48
+    (int)10, (int)20, (int)10,
     (int)180, (int)100,
-    (int)1600, (int)5000, 
-    (int)-2000, (int)1500, (int)2200,
+    (int)1500, (int)5000, 
+    (int)-2000, (int)1000, (int)2200,
     {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
     1,  // Зима
     0,  // Позиция текущего alarm в EEPROM
@@ -54,11 +54,11 @@ struct st_eeprom_par prim_par={
      {0x28,0x1e,0x2f,0x7e,0x03,0x00,0x00,0x98,0x01}, // 28	1E	2F	7E	3	0	0	98	1	FF	FC
      {0x28,0x39,0x46,0x7e,0x03,0x00,0x00,0x49,0x01}} // 28	39	46	7E	3	0	0	49	1	FF	FB
     */ 
-     //Ньютона металоизделия П2
-     {{0x28,0x95,0x0f,0x7e,0x03,0x00,0x00,0x72,0x01}, // 28	95	F	7E 	3	0	0	72	1	FF	FE
-     {0x28,0xc1,0x1a,0x7e,0x03,0x00,0x00,0x2e,0x01}, // 28	C1	1A	7E	3	0	0	2E	1	FF	FD
-     {0x28,0x1a,0x17,0x7e,0x03,0x00,0x00,0xfe,0x01}, // 28	1A	17	7E	3	0	0	FE	1	FF	FC
-     {0x28,0xe8,0x2a,0x7e,0x03,0x00,0x00,0x8a,0x01}} // 28	E8	2A	7E	3	0	0	8A	1	FF	FB
+     //Ньютона металоизделия П2                           
+     //{{0x28,0x95,0x0f,0x7e,0x03,0x00,0x00,0x72,0x01}, // 28	95	F	7E 	3	0	0	72	1	FF	FE
+     //{0x28,0xc1,0x1a,0x7e,0x03,0x00,0x00,0x2e,0x01}, // 28	C1	1A	7E	3	0	0	2E	1	FF	FD
+     //{0x28,0x1a,0x17,0x7e,0x03,0x00,0x00,0xfe,0x01}, // 28	1A	17	7E	3	0	0	FE	1	FF	FC
+     //{0x28,0xe8,0x2a,0x7e,0x03,0x00,0x00,0x8a,0x01}} // 28	E8	2A	7E	3	0	0	8A	1	FF	FB
     
      /*  Ньютона металоизделия П3
      {{0x28,0x50,0x32,0x7e,0x03,0x00,0x00,0x6e,0x01}, // 28	50	32	7E 	3	0	0	6E	1	FF	FE
@@ -80,12 +80,44 @@ struct st_eeprom_par prim_par={
      {0x22,0x8e,0xe1,0x03,0x00,0x00,0x00,0xf3,0x01}, // 22	8e	e1	3	0	0	0	f3	1	FF	FC
      {0x22,0x2b,0x08,0x04,0x00,0x00,0x00,0xeb,0x01}} // 22	2b	8	4	0	0	0	eb	1	FF	FB
     */
+     
+    /*    Микрофарм П2.                                 
+    {{0x28,0xf8,0x28,0x94,0x03,0x00,0x00,0x00,0x01}, // 28  F8  28  94  3   0   0   0   1	FF	FE   Помещение 
+     {0x28,0x7b,0x3b,0x94,0x03,0x00,0x00,0x81,0x01}, // 28  7B  3B  94  3   0   0   81  1	FF	FD   Улица
+     {0x28,0x54,0x26,0x94,0x03,0x00,0x00,0x83,0x01}, // 28  54  26  94  3   0   0   83  1	FF	FC   Вода ВХОД
+     {0x28,0xe7,0x3f,0x94,0x03,0x00,0x00,0x52,0x01}} // 28  E7  3F  94  3   0   0   52  1	FF	FB   Вода выход
+    */ 
+     /*    Микрофарм П1.                                 
+    {{0x28,0xba,0x56,0x7e,0x03,0x00,0x00,0x86,0x01}, // 28  BA  56  7E  3   0   0   86  1	FF	FE   Помещение 
+     {0x28,0xea,0x20,0x95,0x03,0x00,0x00,0x84,0x01}, // 28  EA  20  95  3   0   0   84  1	FF	FD   Улица
+     {0x28,0x1e,0x34,0x7e,0x03,0x00,0x00,0x94,0x01}, // 28  1E  34  7E  3   0   0   94  1	FF	FC   Вода ВХОД
+     {0x28,0x1e,0x2b,0x7e,0x03,0x00,0x00,0x87,0x01}} // 28  1E  2B  7E  3   0   0   87  1	FF	FB   Вода выход
+     */
+     /*    Зеньков П1.                                 
+    {{0x28,0x61,0x23,0x7e,0x03,0x00,0x00,0x05,0x01}, // 28  61  23  7E  3   0   0   5   1	FF	FE   Помещение 
+     {0x28,0x56,0x21,0x7e,0x03,0x00,0x00,0xee,0x01}, // 28  56  21  7E  3   0   0   EE  1	FF	FD   Улица
+     {0x28,0x13,0x57,0x7e,0x03,0x00,0x00,0x81,0x01}, // 28  13  57  7E  3   0   0   81  1	FF	FC   Вода ВХОД
+     {0x28,0xc6,0x1e,0x7e,0x03,0x00,0x00,0xb4,0x01}} // 28  C6  1E  7E  3   0   0   B4 1	FF	FB   Вода выход
+     */ 
+    /*    Зеньков П2.                                 
+    {{0x28,0xb8,0x24,0x7e,0x03,0x00,0x00,0x06,0x01}, // 28  B8  24  7E  3   0   0   6   1	FF	FE   Помещение 
+     {0x28,0x2c,0x1d,0x7e,0x03,0x00,0x00,0x1c,0x01}, // 28  2C  1D  7E  3   0   0   1C  1	FF	FD   Улица
+     {0x28,0x6f,0x42,0x7e,0x03,0x00,0x00,0xca,0x01}, // 28  6F  42  7E  3   0   0   CA  1	FF	FC   Вода ВХОД
+     {0x28,0x4f,0x36,0x7e,0x03,0x00,0x00,0x0e,0x01}} // 28  4F  36  7E  3   0   0   E   1	FF	FB   Вода выход
+    */
+      //    Зеньков П3.                                 
+    {{0x28,0xc2,0x14,0x7e,0x03,0x00,0x00,0xd5,0x01}, // 28  C2  14  7E  3   0   0   D5  1	FF	FE   Помещение 
+     {0x28,0xd6,0x3a,0x7e,0x03,0x00,0x00,0x08,0x01}, // 28  D6  3A  7E  3   0   0   8   1	FF	FD   Улица
+     {0x28,0x4f,0x4c,0x7e,0x03,0x00,0x00,0xde,0x01}, // 28  4F  4C  7E  3   0   0   DE  1	FF	FC   Вода ВХОД
+     {0x28,0x0a,0x3e,0x7e,0x03,0x00,0x00,0xae,0x01}} // 28  A   3E  7E  3   0   0   AE  1   FF	FB   Вода выход
+	
+   
     
 };
 unsigned int time_integration=0;
 int tmp_delta;
 byte tap_angle_min = 0;   // Ограничение крана снизу от температуры
-// byte fan_speed = 0;  // Скорость вентилятора
+byte fan_speed = 0;  // Скорость вентилятора
 enum en_event event;                          // Текущее событие в системе
 // Описание функций
 void printallterms(void); void lcd_primary_screen(void);
@@ -96,18 +128,19 @@ void check_peripheral(void);
 void event_processing(void);
 void mode_processing(void);
 void update_P(int);
-void update_PID(int error, int iMin, int iMax);
+void deley_run(void);
+//void update_PID(int error, int iMin, int iMax);
 void init_new_terms(unsigned char);
 // Основная программа
 void main(void) {
     // register byte i;
     byte size_prim_par;
-    
     init();                  // Инициализация всей периферии
     #asm("sei")             // Global enable interrupts
     printf ("Инициализация кнопок...\r\n"); 
     init_keys();
-    printf("Старт Ньютона металоизделия П2_1. %u.%02u. Найдено %u термометров.\r\n", MAJOR_VERSION, MINOR_VERSION, ds1820_devices);
+    deley_run();
+    printf("Старт Зеньков П3. %u.%02u. Найдено %u термометров.\r\n", MAJOR_VERSION, MINOR_VERSION, ds1820_devices);
     // Сохраняем в EEPROM структуру prim_par
     // ppr_par = &prim_par;
     size_prim_par = sizeof(prim_par);
@@ -156,16 +189,22 @@ void main(void) {
     // if (PINC.5) PORTD &= ~(1<<5); else PORTD |= (1<<5);
     if (prim_par.season) signal_white(ON); else signal_white(OFF);
     FAN_SPEED = prim_par.fan_speed;
-    //fan_speed = FAN_SPEED;
-    //if (FAN_SPEED <= FAN_SPEED_MIN) FAN_SPEED = FAN_SPEED_MIN;
+    fan_speed = FAN_SPEED;
+    if (FAN_SPEED <= FAN_SPEED_MIN) FAN_SPEED = FAN_SPEED_MIN;
+    POM_T = termometers[0].t;
+    UL_T = termometers[1].t;
+    WIN_T = termometers[2].t;
+    WOUT_T = termometers[3].t;
     tmp_delta = abs(prim_par.TA_in_Min) + TA_IN_NOLIMIT;  // вычисление диапазона работы ограничителя крана по температуре
-    mode.k_angle_limit = (TAP_ANGLE_LIMIT / tmp_delta) * 1000; // вычисление коэффициента ограничения крана для заданных настроек                    
-    if (UL_T < TA_IN_NOLIMIT) {    // Вычисление угла ограничения (UL_T < TA_IN_NOLIMIT)
-        tap_angle_min = ((long int)((TA_IN_NOLIMIT - UL_T) * mode.k_angle_limit))/1000;   // вычисление ограничения крана по температуре воздуха на входе и коэффициенту mode.k_angle_limit                     
-    };     
+    mode.k_angle_limit = ((TAP_ANGLE_LIMIT * 1000) / tmp_delta); // вычисление коэффициента ограничения крана для заданных настроек                    
+     if (UL_T < TA_IN_NOLIMIT) {    // Вычисление угла ограничения (UL_T < TA_IN_NOLIMIT)
+        tap_angle_min = prim_par.tap_angle + ((long int)((TA_IN_NOLIMIT - UL_T) * mode.k_angle_limit))/1000;   // вычисление ограничения крана по температуре воздуха на входе и коэффициенту mode.k_angle_limit
+        printf(" tap_angle_min %u .   Kоэффициент :%d\r\n",  tap_angle_min, mode.k_angle_limit);                       
+    };
+       
     if (TAP_ANGLE < tap_angle_min) TAP_ANGLE = tap_angle_min;
        else TAP_ANGLE = prim_par.tap_angle;     
-    printf("Установка вентилятора. %u. Установка крана %u .\r\n", FAN_SPEED, TAP_ANGLE);
+    printf(" Установка крана %u .   prim_par.tap_angle :%d\r\n",  TAP_ANGLE, prim_par.tap_angle );
     while(1) {
         // ВНИМАНИЕ! НИЖЕ ДО ОКОНЧАНИЯ ЦИКЛА WHILE КОД НЕ ДОБАВЛЯТЬ!!!
         check_serial();
@@ -182,7 +221,6 @@ void check_peripheral(void) {
     // В этой функции запрещено (!) устанавливать режимы
     // Обрабатываем поворот valcoder'а
     if ((abs(valcoder)-VALCODER_SENSITY) >= 0) {        // Если сработал valcoder
-        // printf ("Сгенерировали кручение (%i)...\r\n", valcoder);
         if (valcoder < 0)
             event = ev_left;
         else
@@ -220,7 +258,8 @@ void check_peripheral(void) {
             (termometers[1].t < (prim_par.TA_in_Min-5))) // Температура на улице ниже критической  на 5 градусов.UL_T
             event = ev_freezing1;
         if (CHECK_EVENT && !(prim_par.alert_status[7] || prim_par.alert_status[3]) && 
-            (termometers[0].t < prim_par.TA_out_Min)) // Температура в помещения ниже критической POM_T
+            (termometers[0].t < prim_par.TA_out_Min) && (termometers[1].t < prim_par.TA_out_Min))  // Температура в помещения ниже критической POM_T
+               // Если тепература на улице выше критической POM_T
             event = ev_freezing2;
         if (CHECK_EVENT && !(prim_par.alert_status[10] || prim_par.alert_status[5]) && 
             (termometers[3].t < prim_par.TW_out_Min)) // Температура воды обратки ниже критической WOUT_T
@@ -248,6 +287,10 @@ void event_processing(void) {
     // Также здесь выполняются инициализационные действия для процессов: Вкл./выкл индикатор, запустить бибикалку, нарисовать строку меню и т.п.
     switch (event) {
         case ev_secunda:                // Обрабатываем ежесекундное событие.
+            POM_T = termometers[0].t;
+            UL_T = termometers[1].t;
+            WIN_T = termometers[2].t;
+            WOUT_T = termometers[3].t;
             MAIN_T = read_term(0);       // Выводим информацию о главном термометре !!!
             switch (mode.menu) {
                 case 0: lcd_primary_screen(); break;
@@ -256,16 +299,17 @@ void event_processing(void) {
                 // case 2: lcd_edit(0); break;
             }
             //if (!mode.print && (mode.run ==1)) printf("-");
-            if (mode.print && (mode.run ==1)) printf("-");
-            if (mode.print && (mode.run ==3)) printf ("До следующего измерения ПУСК: %u\r\n", time_integration);
-            if (mode.print && (mode.run ==0)) printf ("До следующего измерения СТОП: %u\r\n", timer_fan);
+            if (mode.print && (mode.run ==1)) printf("-");  
+            //if (mode.print && (mode.run ==3) && (prim_par.season)) printf (" ПУСК Зима: %u\r\n", time_integration);
+            //if (mode.print && (mode.run ==3) && !(prim_par.season)) printf (" ПУСК Лето: %u\r\n", time_cooling);
+            //if (mode.print && (mode.run ==0)) printf ("До следующего измерения СТОП: %u\r\n", timer_fan);
             event = ev_none;            // Очищаем событие
             break;
         case ev_left:                   // printf ("Обрабатываем прокрутку valcoder влево\r\n");
         case ev_right:                  // printf ("Обрабатываем прокрутку valcoder вправо\r\n");
             // Запускаем таймер инактивности
             //timer1_valcoder = TIMER_INACTIVE;
-            timer1_valcoder = TIMER_INACTIVE; // prim_par.T_z
+            timer1_valcoder = TIMER_INACTIVE; 
             valcoder = VALCODER_NO_ROTATE;
             signal_buz(OFF);
             // printf ("Обрабатываем прокрутку valcoder (%d), в режиме %d - ", event-2, mode.menu);
@@ -285,7 +329,7 @@ void event_processing(void) {
             key_treated[2]=1;
             event = ev_none;            // Очищаем событие
             signal_buz(SHORT);
-            timer1_valcoder = TIMER_INACTIVE;     // prim_par.T_z Запускаем таймер инактивности
+            timer1_valcoder = TIMER_INACTIVE;     //Запускаем таймер инактивности
             switch (mode.menu) {
                 // lcd_primary_screen();
                 // Обрабатываем нажатие enter c учетом того, что значение mode.menu еще старое
@@ -298,12 +342,12 @@ void event_processing(void) {
             break;
         case ev_timer:
             // Запускаем таймер инактивности
-            if (mode.menu) timer1_valcoder = TIMER_INACTIVE; // prim_par.T_z.....TIMER_INACTIVE;
+            if (mode.menu) timer1_valcoder = TIMER_INACTIVE; // TIMER_INACTIVE;
         case ev_cancel:
             if (event == ev_cancel) {
                 signal_buz(SHORT);
                 key_treated[3]=1;
-                timer1_valcoder = TIMER_INACTIVE;     //prim_par.T_z  ....Запускаем таймер инактивности ()    
+                timer1_valcoder = TIMER_INACTIVE;     //Запускаем таймер инактивности ()    
             }
             event = ev_none;            // Очищаем событие
             // print_prim_par((unsigned char *)&prim_par, sizeof(prim_par));
@@ -324,9 +368,10 @@ void event_processing(void) {
                         signal_white(ON);
                         mode.pomp = 1;
                         mode.run = 1;                // Устанавливаем режим Прогрев
-                        timer_start = prim_par.T_z; // TIMER_INACTIVE  ...Запускаем таймер STRT
+                        timer_start = TIME_START;
+                        //timer_start = prim_par.T_z; // TIMER_INACTIVE  ...Запускаем таймер STRT
                         TAP_ANGLE = PWM_MAX;
-                        printf("Включен режим Прогрев. LIMIT = %d, Время прогрева = %d\r\n", mode.k_angle_limit,prim_par.T_z);
+                        printf("Включен режим Прогрев. LIMIT = %d\r\n", mode.k_angle_limit);
                         signal_green(SHORT);
                     } else {
                         signal_white(OFF);
@@ -336,10 +381,12 @@ void event_processing(void) {
                         signal_green(ON);
                         printf("Включен режим Пуск\r\n");
                     };   
-                    FAN_SPEED = prim_par.fan_speed;
-                    if (FAN_SPEED <= FAN_SPEED_MIN) FAN_SPEED = FAN_SPEED_MIN;
-                    count_fan = 0; 
+                    //FAN_SPEED = prim_par.fan_speed;
+                    //if (FAN_SPEED <= FAN_SPEED_MIN) FAN_SPEED = FAN_SPEED_MIN;
+                    //count_fan = 0; 
                     time_integration = 0;
+                    //time_cooling = TIME_COOLING_MAX;
+                    time_cooling = prim_par.T_z;
                     signal_buz(LONG); 
                     break;
                 } //mode.run=0 ;
@@ -369,6 +416,7 @@ void event_processing(void) {
                 case 3: mode.run = 2; 
                         signal_green(LONG); signal_buz(LONG);
                         printf ("Включен режим Остановки\r\n");
+                        time_cooling = 0; 
                         timer_stop = TIME_STOP;    // Запускаем таймер STOP
                         time_integration = 0; break; //mode.run=3
                 default: break;
@@ -399,12 +447,13 @@ void event_processing(void) {
             break;
         case ev_freezing1:  // Температура на улице ниже критической UL_T (Если не повторяется в течении часа восстановление)
             alarm_reg(0, 1, get_alert_str(2), 2);
-            /* 
-            signal_red(SHORT); signal_buz(MEANDR);
-            signal_green(SHORT);
+             
+            signal_red(SHORT); 
+            signal_buz(MEANDR);
+            //signal_green(SHORT);
             mode.run = 0; // Режим оттаивания
             mode.fan = 0; 
-            */
+            
             if (prim_par.season) mode.pomp = 1;
             TAP_ANGLE = PWM_MAX;
             printf ("АВАРИЯ: %s\r\n", get_alert_str(2));
@@ -492,8 +541,9 @@ void mode_processing(void) {
     if (mode.run == ENGINEERING) {
     } else {
         OCR0 = (unsigned char)TAP_ANGLE;
-        OCR2 = (unsigned char)FAN_SPEED; 
-                    
+        OCR2 = (unsigned char)FAN_SPEED;// Задействованно для включения охладителя 
+        //COOLING1 = mode.cooling1;
+        //COOLING2 = mode.cooling2;            
         MOTOR = mode.fan;
         FAN_VAR = mode.fan;
         POMP = mode.pomp;
@@ -507,8 +557,8 @@ void mode_processing(void) {
                     if (prim_par.season && (UL_T < TA_IN_NOLIMIT)) {
                         //int tmp_delta = abs(prim_par.TA_in_Min) + TA_IN_NOLIMIT; 
                         //mode.k_angle_limit = (TAP_ANGLE_LIMIT / tmp_delta) * 1000;
-                        tap_angle_min = ((long int)((TA_IN_NOLIMIT - UL_T) * mode.k_angle_limit))/1000;   // вычисление ограничения крана по температуре воздуха на входе и коэффициенту mode.k_angle_limit
-                        if (tap_angle_min < 100) tap_angle_min = 100 ; 
+                        tap_angle_min =prim_par.tap_angle + ((long int)((TA_IN_NOLIMIT - UL_T) * mode.k_angle_limit))/1000;   // вычисление ограничения крана по температуре воздуха на входе и коэффициенту mode.k_angle_limit
+                        if (tap_angle_min < 100) tap_angle_min = 100 ;  // Принудительный запрет закрытия крана меньше 40% в режиме стоп
                     }    
                     // Процесс поддержания температуры калорифера в режиме СТОП Зимой
                     error_w_stop = (prim_par.TW_out_Stop - WOUT_T)/100;
@@ -558,30 +608,79 @@ void mode_processing(void) {
                     }
                 } else {
                     signal_white(OFF);
-                    mode.pomp = 0;
-                             
+                    mode.pomp = 0;               
                 }
-                signal_green(OFF);   
+                signal_green(OFF);
+                time_cooling = 0;
+                //mode.cooling1 = 0;
+                //mode.cooling2 = 0;   
                 break;
             //case 1:
             //         if (!mode.print) printf("-");
             //    break;
             case 3:
                 //if (IS_ALERT == 0) {
-                    if (prim_par.season) 
-                        signal_white(ON);  
+                    if (prim_par.season) {
+                        signal_white(ON);
+                        //  Простой алгоритм обработки
+                        if (time_integration == 0) {
+                            if (POM_T < (SET_T - (prim_par. Kd*10)))  update_P(SET_T - POM_T);// Разница между T Уст и Т помещения
+                            if (POM_T > (SET_T+(prim_par. Kd*10)))  update_P(SET_T - POM_T);// Разница между T Уст и Т помещения        
+                            time_integration = prim_par.T_int;
+                            //mode.cooling1 = 0;
+                            //mode.cooling2 = 0;
+                            time_cooling = 0;
+                            signal_green(ON);
+                        }
+                      }    
                     else { 
                         signal_white(OFF);
-                        FAN_SPEED = prim_par.fan_speed;
+                        // Для установок с водяным охладителем !
+                        //Запуск охладителя
+                        if (time_cooling == 0) {
+                            //if (POM_T > (SET_T + (prim_par. Ki*10))) {
+                            if (UL_T > SET_T) {
+                                if (POM_T > SET_T) {
+                                    //if ( mode.cooling1 == 0) {
+                                        //mode.cooling1 = 1;
+                                    //    signal_green(SHORT);
+                                    //} else {
+                                    //     mode.cooling2 = 1;
+                                    //    signal_green(LONG);
+                                   // }
+                                if (mode.print) printf("Включен охладитель.  POM_T :%d\r\n",   POM_T);     
+                                }
+                            }
+                        //Остановка охладителя   
+                            if (POM_T < (SET_T - (prim_par. Ki*10)) || (UL_T < SET_T) )  {
+                               //if ( mode.cooling1 == 1) {
+                               //     mode.cooling1 = 0;
+                               //     signal_green(SHORT);
+                               // } else {
+                               //     mode.cooling2 = 0;
+                               //     signal_green(ON);
+                               // }
+                            if (mode.print) printf("Отключен охладитель. Разность температур - дельта: %d, POM_T :%d\r\n",  (SET_T - (prim_par. Ki*10)), POM_T);     
+                            }
+                            time_cooling = prim_par.T_z;  
+                            //time_cooling = TIME_COOLING_MAX;
+                            //mode.cooling1 = 0;
+                            //mode.cooling2 = 0;
+                            //count_cooling = 0;
+                        }  
+                        
                     }
-                    //  Простой алгоритм обработки
+                    
+                    /* 
                     if (1 == 0) {
-                        update_P(SET_T - POM_T); // Разница между T Уст и Т помещения
-                        time_integration = prim_par.T_int;
-                    } 
-                    if (time_integration == 0) {
                         update_PID(SET_T - POM_T, -5000, 5000); // Разница между T Уст и Т помещения
                         time_integration = prim_par.T_int;
+                        
+                        if (!prim_par.season && ){
+                           if ((SET_T+4+ - POM_T
+                        
+                        }
+                       //Внимание ОТКЛЮЧЕНО РЕГУЛИРОВАНИЕ СКОРОСТИ ВЕНТИЛЯТОРА!!! 
                         if (prim_par.season && (UL_T < TA_IN_NOLIMIT)) {
                             // Вычисление ограничения закрытия крана TAP_ANGLE = tap_angle_min
                             //tap_angle_min = ((long int)((TA_IN_NOLIMIT - UL_T) * mode.k_angle_limit))/1000;
@@ -615,8 +714,10 @@ void mode_processing(void) {
                             //if (!mode.print) printf("Скорость вентилятора расчетная: %d, измеренная : %d, Заданная скорость: %d, POM_T: %d, TAP_ANGLE_MIN = %d \r\n",  FAN_SPEED, ADC_VAR2, prim_par.fan_speed, POM_T, tap_angle_min); 
                             if (mode.print) printf("Скорость вентилятора расчетная: %d, измеренная : %d, Заданная скорость: %d, POM_T: %d, TAP_ANGLE_MIN = %d \r\n",  FAN_SPEED, ADC_VAR2, prim_par.fan_speed, POM_T, tap_angle_min); 
                         }
-                    } 
-                    signal_green(ON);
+                        
+                    }
+                    */ 
+                    //signal_green(ON);
                 // } 
                 break;
             default:
@@ -626,9 +727,11 @@ void mode_processing(void) {
 }
 void check_range(void) {
     // Проверяем на принадлежность диапазону
+    // Аппаратное ограничение закрытия крана по напряжению 2 вольта
+    if  ( TAP_ANGLE < prim_par.tap_angle ) TAP_ANGLE = prim_par.tap_angle; 
     // Вычисление ограничения закрытия крана TAP_ANGLE = tap_angle_min
-    if (UL_T < TA_IN_NOLIMIT)  tap_angle_min = ((long int)((TA_IN_NOLIMIT - UL_T) * mode.k_angle_limit))/1000;
-    //printf("Пересчет ограничения: %d, Ул. т :%d, Коэффициент :%d \r\n",  (TA_IN_NOLIMIT - UL_T), UL_T, mode.k_angle_limit);
+    if (UL_T < TA_IN_NOLIMIT)  tap_angle_min = prim_par.tap_angle + ((long int)((TA_IN_NOLIMIT - UL_T) * mode.k_angle_limit))/1000;
+    if (!mode.print) printf("Пересчет ограничения: %d, Ул. т :%d, Коэффициент :%i, ограничение снизу :%d, UL_T :%i  \r\n",  (TA_IN_NOLIMIT - UL_T), UL_T, mode.k_angle_limit,prim_par.tap_angle, UL_T);
     if (TAP_ANGLE < tap_angle_min)
         TAP_ANGLE = tap_angle_min;
     else          
@@ -640,10 +743,12 @@ void check_range(void) {
 void update_P(int error) {
     // TAP_ANGLE = TAP_ANGLE + error/100;          // TAP_ANGLE - Состояние выхода на PWM
     if ((TAP_ANGLE >=0) && (TAP_ANGLE <= PWM_MAX))
-        TAP_ANGLE = TAP_ANGLE + (error / 100) * prim_par.Ku;
+        TAP_ANGLE = TAP_ANGLE + ((error* prim_par.Ku)/1000);
     check_range();
-    printf("Разность температур: %d, TAP_ANGLE :%d, time_integration :%d \r\n",  error, ((TAP_ANGLE*100)/0xFF),time_integration);
+    //if (mode.print == 2) printf("Разность температур: %d, Процент_ANGLE :%d, TAP_ANGLE:%d, ANGLE CALC:%d,KU:%d \r\n",  error, ((TAP_ANGLE*100)/0xFF),TAP_ANGLE,((error / 100) * prim_par.Ku),prim_par.Ku);
+    if (!mode.print) printf("Разность температур: %d, Процент_ANGLE :%d, TAP_ANGLE:%d, ANGLE CALC:%d,KU:%d \r\n",  error, (((TAP_ANGLE -  prim_par.tap_angle)*100)/(PWM_MAX -  prim_par.tap_angle)),TAP_ANGLE,((error / 100) * prim_par.Ku),prim_par.Ku);
 }
+/*
 void update_PID(int error, int iMin, int iMax) {
     static int dState = 0, iState = 0;
     int pTerm, dTerm, iTerm;
@@ -652,7 +757,7 @@ void update_PID(int error, int iMin, int iMax) {
     pTerm = (prim_par.Ku * error) / 10;    // calculate the proportional term
     iState += error;                // calculate the integral state with appropriate limiting
     // Проверяем на принадлежность диапазону
-    if (FAN_SPEED >= prim_par.fan_speed) {
+   
         if ((iState > iMax) || (iState < iMin)) { 
             if (iState > iMax) 
                 iState = iMax;
@@ -665,7 +770,7 @@ void update_PID(int error, int iMin, int iMax) {
         result = pTerm + iTerm - dTerm;
         TAP_ANGLE += result / 100;
         check_range();
-    }
+   
     if (!mode.print)
     // Температура заданная, Температура измеренная, Delta, Угол крана расчетный, Угол кранаизмеренный, Угол ограничения, result, pTerm, iTerm, dTerm, Обороты расчетные,Обороты измеренныее\r\n"
         printf("%02u:%02u:%02u, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d\r\n",
@@ -678,6 +783,7 @@ void update_PID(int error, int iMin, int iMax) {
         printf("Delta (x100) = %d, result = %d, TAP_ANGLE = %d, pTerm = %d, iTerm = %d, dTerm = %d\r\n", 
             error, result, TAP_ANGLE, pTerm, iTerm, dTerm, POM_T);
 }
+*/
 // Печать всех термометров
 void printallterms(void) {
     int term;
@@ -861,6 +967,24 @@ void toggle_sound(void) {
         printf("Звук включен\r\n");
     mode.sound = !mode.sound;
 }
+// Старт программы с задержкой
+void deley_run(void) {
+    byte i =0;
+    signal_buz(LONG);
+    for (i = 0; i < 7; i++){
+        delay_ms(300);
+        signal_white(ON);
+        delay_ms(300);
+        signal_white(OFF);
+        signal_red(ON);
+        delay_ms(300);
+        signal_red(OFF);
+        signal_green(ON);
+        delay_ms(300);
+        signal_green(OFF);
+    };
+    
+}
 // Переключение печати
 void toggle_print(void) {
     mode.print = !mode.print;
@@ -868,8 +992,8 @@ void toggle_print(void) {
         printf("Печать включена\r\n"); 
         //printf("Печать выключена\r\n Время, Температура заданная, Температура измеренная, Delta, Угол крана расчетный, Угол кранаизмеренный, Угол ограничения, result, pTerm, iTerm, dTerm, Обороты расчетные, Обороты измеренныее\r\n");
     else
-        printf("Печать выключена\r\n Время, Температура заданная, Температура измеренная, Delta, Угол крана расчетный, Угол кранаизмеренный, Угол ограничения, result, pTerm, iTerm, dTerm, Обороты расчетные, Обороты измеренныее\r\n");
-        //printf("Печать включена\r\n");
+        //printf("Печать выключена\r\n Время, Температура заданная, Температура измеренная, Delta, Угол крана расчетный, Угол кранаизмеренный, Угол ограничения, result, pTerm, iTerm, dTerm, Обороты расчетные, Обороты измеренныее\r\n");
+        printf("Печать выключена\r\n");
 }
 // Обработка событий от серийного порта
 void check_serial(void) {
@@ -887,7 +1011,7 @@ void check_serial(void) {
             case 0x73:  /* 's' */     // переключение звука
                 toggle_sound(); break;   
             case 0x77:  /* 'w' */     // символ 
-                printf ("Cаабытие = %u\r\n", (unsigned char)event);
+                printf ("Cобытие = %u\r\n", (unsigned char)event);
                 break;
             case 0x78:  // символ 'x' 
                 toggle_print(); break;
