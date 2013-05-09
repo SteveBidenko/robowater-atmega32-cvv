@@ -38,10 +38,10 @@ struct st_parameter sdt[NUM_DT]= {   // Меню Установки времени и даты
     {19, e_day, 1, 10},             // [2]
     {03, e_month, 1, 11},           // [3]
     {11, e_year, 1, 12},            // [4]
-    {0, e_winter, 1, 41},           // [5] ЗИМА
-    {0, e_password, 1, 42}          // [6]
-  };
-
+    {0, e_winter, 1, 33},           // [5] ЗИМА
+    {0, e_password, 1, 34}          // [6]
+};
+// Рабочие параметры
 struct st_parameter parameters[NUM_PARAMETERS]= {
     {2200, e_room, 1, 15},          // [0] Заданная температура воздуха TA_out_prs
     {2000, e_temperature, 0, 13},   // [1] Температура воздуха в помещении
@@ -65,15 +65,7 @@ struct st_parameter settings[NUM_SETTINGS]={
     {10, e_stime, 1, 29},           // [5] время интегрирования зима T_int
     {1, e_coef, 1, 30},             // [6] Коэффициэнт усиления Ku
     {0, e_coef, 1, 31},             // [7] Дельта лето Ki
-    {0, e_coef, 1, 32},             // [8] Дельта зима Kd
-    {0, e_temperature, 1, 33},      // [9] Смещение Ta2
-    {0, e_scale, 1, 34},            // [10] Множитель Ta2
-    {0, e_temperature, 1, 35},      // [11] Смещение Ta1
-    {0, e_scale, 1, 36},            // [12] Множитель Ta1
-    {0, e_temperature, 1, 37},      // [13] Смещение Tw1
-    {0, e_scale, 1, 38},            // [14] Множитель Tw1
-    {0, e_temperature, 1, 39},      // [15] Смещение Tw2
-    {0, e_scale, 1, 40}             // [16] Множитель Tw2
+    {0, e_coef, 1, 32}              // [8] Дельта зима Kd
 };
 #define ALERT_POS 61
 struct st_parameter alerts[MAX_ALERTS] = {
@@ -97,7 +89,7 @@ flash lcd_str all_menu_str[] = {
         "Уст. ",       // [3]
         "Параметры ",  // [4]
         "АВАРИЙ ",      // [5]
-        "НАСТРОЙКА...",    // [6]
+        "НАСТРОЙКА...", // [6]
         "Уст.Час. ",   // [7]
         "Уст Мин ",    // [8]
         "Уст.день. ",  // [9]
@@ -118,28 +110,19 @@ flash lcd_str all_menu_str[] = {
         "TW STOP ",    // [24] TW_out_Stop
         "TW Min ",     // [25] TW_out_Min
         "TA Min ",     // [26] TA_out_Min
-        "ВР,Лето ",    // [27] T_z
-        "ВР.Зима ",     // [28] T_int
+        "ВР.Лето=",    // [27] T_z
+        "ВР.Зима=",    // [28] T_int
         "КУ=",         // [29]
-        "Дt Лето=",         // [30]
-        "Дt Зима=",         // [31]
-        "См.П.=",      // [32] 0xFE
-        "Шк.П.=",     // [33] 0xFE
-        "См.Ул.=",    // [34] 0xFD
-        "Шк.Ул.=",    // [35] 0xFD
-        "См.ВВх=",    // [36] 0xFC
-        "Шк.ВВх=",    // [37] 0xFC
-        "См.ВВых=",   // [38] 0xFB
-        "Шк.ВВых=",   // [39] 0xFB
-        "Сезон=",     // [40]
-        "Пароль="     // [41]
-        
+        "Дt Лето=",    // [30]
+        "Дt Зима=",    // [31]
+        "Сезон=",     // [32]
+        "Пароль="     // [33]
     };
 char linestr[20];           // Строка для LCD
 bit need_eeprom_write;      // Флаг, если необходимо записать в EEPROM
 // Функция синхронизации структуры основных переменных
 void sync_set_par(byte sync) {
-    register byte i, j;
+    register byte i;
     // Если входим в меню
     if (sync == SYNC_TO_MENU) {
         main_menu[2].val_data = prim_par.season;
@@ -154,7 +137,7 @@ void sync_set_par(byte sync) {
         settings[8].val_data = prim_par.Kd;
         if (mode.run == 0) {
             parameters[8].val_data = prim_par.fan_speed  ;
-        };     
+        };
         //parameters[8].val_data = fan_speed;
         parameters[0].val_data = prim_par.TA_out_prs;
         parameters[10].val_data = mode.pomp;
@@ -165,11 +148,6 @@ void sync_set_par(byte sync) {
         sdt[3].val_data = s_dt.cmo;
         sdt[4].val_data = s_dt.cyy;
         SEASON = prim_par.season;
-        for (i = 0; i < MAX_DS1820; i++) {
-            j = 2*i + 9;
-            settings[j++].val_data = prim_par.elims[i].shift;
-            settings[j].val_data = (int)(prim_par.elims[i].scale);
-        }
     } else {
         if (mode.stop_sync_dt) {
             if ((s_dt.cHH != sdt[0].val_data) || (s_dt.cMM != sdt[1].val_data)) {
@@ -190,16 +168,6 @@ void sync_set_par(byte sync) {
             };
         } else {
             // Проверяем каждый параметр и если он отличается от начального, то выставляем флаг необходимости записи в EEPROM
-            for (i = 0; i < MAX_DS1820; i++) {
-                j = 2*i + 9;
-                if (prim_par.elims[i].shift != settings[j].val_data) {
-                    prim_par.elims[i].shift = settings[j].val_data; need_eeprom_write = 1;
-                }
-                j++;
-                if (prim_par.elims[i].scale != (signed char)settings[j].val_data) {
-                    prim_par.elims[i].scale = (signed char)settings[j].val_data; need_eeprom_write = 1;
-                }
-            }
             if (prim_par.TA_in_Min != settings[0].val_data) {
                 prim_par.TA_in_Min = settings[0].val_data; need_eeprom_write = 1;
             }
@@ -234,7 +202,7 @@ void sync_set_par(byte sync) {
             if (prim_par.fan_speed  != parameters[8].val_data) {
                 if (parameters[8].val_data <= FAN_SPEED_MIN) parameters[8].val_data = FAN_SPEED_MIN;
                     prim_par.fan_speed = parameters[8].val_data; need_eeprom_write = 1;
-                };    
+                };
             };
             if (mode.pomp  != parameters[10].val_data) {
                 mode.pomp = parameters[10].val_data;
@@ -293,7 +261,7 @@ char *par_str(struct st_parameter *st_pointer, unsigned char only_val, int pr_da
         case e_percent:
             // Если указан тип проценты, то печатаем как проценты
             if (pr_data <= prim_par.tap_angle ) pr_data = prim_par.tap_angle;
-            if (pr_data >= PWM_MAX ) pr_data = PWM_MAX; 
+            if (pr_data >= PWM_MAX ) pr_data = PWM_MAX;
             sprintf(linestr, "%s%u%%", pr_name, ((pr_data -  prim_par.tap_angle)*100)/(PWM_MAX -  prim_par.tap_angle));
             //sprintf(linestr, "%s%u%%", pr_name, pr_data);
             break;
@@ -301,7 +269,7 @@ char *par_str(struct st_parameter *st_pointer, unsigned char only_val, int pr_da
             // Если указан тип проценты, то печатаем как проценты
             //sprintf(linestr, "%s%u%%", pr_name, (pr_data*100)/0xFF);
             //sprintf(linestr, "%s%u%%", pr_name, pr_data);
-         //   break;    
+         //   break;
         case e_coef:
             // Если указан тип коэффициент, то печатаем как просто число
             sprintf(linestr, "%s%u.%-01u", pr_name,  abs(pr_data)/10, abs(pr_data%10));
@@ -459,7 +427,7 @@ void lcd_init_edit(void) {
                         curr_menu.level = 1; // printf("Вход в меню ALERTS\r\n");
                     }
                     break;
-            case 6: 
+            case 6:
                     if (SETTINGS_OPEN) {
                         init_curr_menu(&settings[0], NUM_SETTINGS);
                         curr_menu.level = 1 ;//printf ("Вход в меню НАСТРОЙКИ\r\n");
@@ -634,7 +602,7 @@ void lcd_edit(signed char direction) {
             break;
         case e_password:
             curr_menu.val_data += direction;
-            SETTINGS_OPEN = (curr_menu.val_data == 20); 
+            SETTINGS_OPEN = (curr_menu.val_data == 20);
             if (curr_menu.val_data < 0) curr_menu.val_data = 99;
             if (curr_menu.val_data > 99) curr_menu.val_data = 0;
             break;

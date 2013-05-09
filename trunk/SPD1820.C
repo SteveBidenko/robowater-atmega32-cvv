@@ -27,8 +27,8 @@ unsigned char sync_ds1820_eeprom(void) {
     signed char th, tl, get_alarm;
 
     for (i = 0; i < ds1820_devices; i++) {
-        get_alarm = ds1820_get_alarm(&ds1820_rom_codes[i][0], &tl, &th);                        
-        if (get_alarm > 0) {    
+        get_alarm = ds1820_get_alarm(&ds1820_rom_codes[i][0], &tl, &th);
+        if (get_alarm > 0) {
             // Адрес термометра [i] начинается с нулевой позиции [0]
             // Если термометр имеет необходимую сигнатуру, то присваеваем значение по смещению. tl
             // Иначе присваиваем в нулевой элемент (температура в помещении)
@@ -54,16 +54,13 @@ void sync_eeprom_ds1820(void) {
 }
 // Функция внесения поправки в измерение и сохранения температуры с проверкой на допустимость
 void rectification(int unconverted, unsigned char index, unsigned char measure_mode) {
-    // float lt;       // параметр для коррекции температуры
     if (index >= MAX_DS1820) return;
-    // lt = (float)prim_par.elims[index].scale / 128 + 1;
-    // lt = lt * unconverted + prim_par.elims[index].shift;
-    // termometers[index].t = (int)lt;
     termometers[index].t = unconverted;
+    // Здесь реализован механизм подсчета кол-ва раз недоступности термометра
     if (measure_mode == INIT_MODE) {
         if (unconverted == NOT_FOUND)
             termometers[index].err = MAX_OFFLINES;
-        else 
+        else
             termometers[index].err = 0;
         termometers[index].t_last = termometers[index].t;
     } else {
@@ -85,11 +82,11 @@ void read_all_terms(unsigned char measure_mode) {
         sync_eeprom_ds1820();
         for(i = 0; i < ds1820_devices; i++) {
             ds1820_set_resolution(&ds1820_rom_codes[i][0], MAX_ACCURACY);
-            delay_ms (DS1820_ALL_DELAY); 
-            // tmp_ret = ds1820_get_resolution(&ds1820_rom_codes[i][0], &resolution);
-            ds1820_run_measure(&ds1820_rom_codes[i][0]); 
             delay_ms (DS1820_ALL_DELAY);
-        }    
+            // tmp_ret = ds1820_get_resolution(&ds1820_rom_codes[i][0], &resolution);
+            ds1820_run_measure(&ds1820_rom_codes[i][0]);
+            delay_ms (DS1820_ALL_DELAY);
+        }
     }
     // Вычитываем значение каждого термометра и сразу запускаем его на измерение
     for (i = 0; i < ds1820_devices; i++) {
@@ -160,20 +157,20 @@ unsigned char ds1820_run_measure(unsigned char *addr) {
 // Функция, снимающая показания температуры со ScratchPAD (ОЗУ) Dallas
 int ds1820_temperature(unsigned char *addr) {
     unsigned char values[16] = { 0,6,12,19,25,31,38,44,50,56,63,69,75,81,88,94 };
-    unsigned char fract; 
-	int t10; 
+    unsigned char fract;
+	int t10;
     if (!ds1820_read_spd(addr)) return NOT_FOUND;         // Если безуспешно, то вовращаем -99.98 градусов
     fract = __ds1820_scratch_pad.temp_lsb & 0xF;           // values[fract] = нашей дробной части
     t10 = __ds1820_scratch_pad.temp_msb;
-	t10 = (((t10 << 8) | __ds1820_scratch_pad.temp_lsb) >> 4) * 100; 
+	t10 = (((t10 << 8) | __ds1820_scratch_pad.temp_lsb) >> 4) * 100;
     t10 += values[fract];
 	return t10;
 }
 /*
 int ds1820_temperature_debug(unsigned char *addr) {
     unsigned char values[16] = { 0,6,12,19,25,31,38,44,50,56,63,69,75,81,88,94 };
-    unsigned char fract; 
-	int t10; 
+    unsigned char fract;
+	int t10;
     if (!ds1820_read_spd(addr)) return NOT_FOUND;         // Если безуспешно, то вовращаем -99.98 градусов
     fract = __ds1820_scratch_pad.temp_lsb & 0xF;           // values[fract] = нашей дробной части
     t10 = __ds1820_scratch_pad.temp_msb;

@@ -31,7 +31,7 @@ struct st_key {
     // PIND = 0x30, PORTD = 0x32
 };
 // Счетчик срабатываний таймера 1
-unsigned char t_key = 0; 
+unsigned char t_key = 0;
 // Функция, возвращающая значение клавиши
 unsigned char key(unsigned char i) {
     // return ((keys[i].status == KEY_POLL) ? keys[i].last : keys[i].status);
@@ -42,7 +42,7 @@ unsigned char key(unsigned char i) {
                 if (keys[i].status == KEY_ON) {
                     //printf ("кнопкa #%d. Статус = %d\r\n", i, key_treated[i]);
                     if (key_treated[i] == 0) {
-                        signal_buz(SHORT); 
+                        signal_buz(SHORT);
                         return KEY_ON;
                     } else return KEY_OFF;
                  }
@@ -50,21 +50,22 @@ unsigned char key(unsigned char i) {
                     key_treated[i] = 0;
                     //printf ("Опросили кнопку #%d. Статус = %d\r\n", i, key_treated[i]);
                     return KEY_OFF;
-                  }   
-         } 
+                  }
+         }
     } else {
         if (keys[i].status == KEY_POLL) {
             return (keys[i].last);
         } else {
             //signal_buz(SHORT);
             return (keys[i].status);
-        }             
+        }
     }
 }
 // Функция инициализации всех кнопок
 void init_keys(void) {
     register unsigned char i;
     for (i=0; i<NUM_KEYS; i++) {
+        // Опрос каждой кнопки
         t_key = KEY_INACTIVE;
         while (keys[i].status == KEY_POLL) {
             poll_key(i);
@@ -76,7 +77,6 @@ void init_keys(void) {
                 keys[i].is_work = 1;
             }
         }
-        //printf ("Опросили кнопку #%d. Статус = %d\r\n", i, keys[i].status);
     }
 }
 // Функция опроса всех кнопок
@@ -98,10 +98,10 @@ void poll_key(unsigned char i) {
         unsigned char num[2];
         unsigned int *p;
     } curr_port;
-                      
+
     curr_port.num[0] = keys[i].reg; curr_port.num[1] = 0;
     // printf ("Опрашиваем клавишу 0x%x, нога %d", keys[i].reg, keys[i].pin);
-    pin_val = BITSET(*(curr_port.p), keys[i].pin) >> keys[i].pin; 
+    pin_val = BITSET(*(curr_port.p), keys[i].pin) >> keys[i].pin;
     // printf (", результат 0x%x\r\n", pin_val);
     switch (keys[i].status) {
         case KEY_ON:
@@ -110,17 +110,17 @@ void poll_key(unsigned char i) {
                 VALCODER_DISABLE();
                 keys[i].on = 0;
                 keys[i].off = 1;
-                keys[i].last = KEY_ON;    
-            } 
+                keys[i].last = KEY_ON;
+            }
             break;
-        case KEY_OFF: 
+        case KEY_OFF:
             if (pin_val == KEY_ON) {
                 keys[i].status = KEY_POLL;
                 VALCODER_DISABLE();
                 keys[i].on = 1;
                 keys[i].off = 0;
-                keys[i].last = KEY_OFF;    
-            } 
+                keys[i].last = KEY_OFF;
+            }
             break;
         case KEY_POLL:
             (pin_val == KEY_ON) ? keys[i].on++ : keys[i].off++;
@@ -130,9 +130,9 @@ void poll_key(unsigned char i) {
                 //printf(".");
                 VALCODER_ENABLE();
                 // if (keys[i].status != keys[i].last)
-                    // printf ("Адрес: 0x%x, Нога: %d, Значение: %d, предыдущее значение %d\r\n", 
-                    //     keys[i].reg, keys[i].pin, keys[i].status, keys[i].last); 
-            } 
+                    // printf ("Адрес: 0x%x, Нога: %d, Значение: %d, предыдущее значение %d\r\n",
+                    //     keys[i].reg, keys[i].pin, keys[i].status, keys[i].last);
+            }
             break;
         default:
     };
