@@ -37,8 +37,8 @@
 #define TIME_BUZ1 1                  // Время Звука 1
 #define TIME_BUZ2 3                  // Время Звука 2
 #define STRLENGTH 16                // Длина строки параметра
-#define TIME_COOLING_MAX 15       //время задержки включения охладителя секунд  
-#define COUNT_FAN_MAX 5          // Максимальное количество осчетов для изменения оборотов вентилятора 
+#define TIME_COOLING_MAX 15       //время задержки включения охладителя секунд
+#define COUNT_FAN_MAX 5          // Максимальное количество осчетов для изменения оборотов вентилятора
 #define FAN_SPEED_MIN 102             // Минимальный предел оборотов вентилятора (40% = 20 Герц )
 #define FAN_SPEED_STEP 10            // Шаг изменения оборотов вентилятора
 #define FAN_SPEED_T_UP 300
@@ -50,12 +50,14 @@
 #define PWM_MAX 245      // Максимальное управляющее воздействие на двигатель П1=249 П2=245
 #define TA_IN_NOLIMIT 500L      //500L Окончание ограничения температуры воздуха на входе (500 = +5 С)
 #define TAP_ANGLE_LIMIT 78   //78.0 Ограничение закрытия трехходового крана при температуре воздуха TA_in_Min (ШИМ для 20% = 51: для 30% = 78))
-//#define TAP_PWM_LIMIT 50   // Ограничение закрытия трехходового по напряжению снизу (ШИМ для 20% = 51: для 30% = 78)) 
-#define MAX_ACCURACY 0b10//0b01       // Точность для термометров в бинарном коде: 0b11 = 0.0625, 0b10 = 0.125, 0b01 = 0.25, 0b00 = 0.5 
+//#define TAP_PWM_LIMIT 50   // Ограничение закрытия трехходового по напряжению снизу (ШИМ для 20% = 51: для 30% = 78))
+#define MAX_ACCURACY 0b10//0b01       // Точность для термометров в бинарном коде: 0b11 = 0.0625, 0b10 = 0.125, 0b01 = 0.25, 0b00 = 0.5
 #define MAX_OFFLINES 5
 #define ENGINEERING 5
 #define CHECK_EVENT (event == ev_none)
 #define ds1820_devices prim_par.terms
+// Чтение температуры (аргумент - номер термометра начиная с 0)
+#define read_term(num) termometers[num].t
 
 // Описание типов переменных
 typedef unsigned char 	byte;	// byte = unsigned char
@@ -82,22 +84,15 @@ enum en_event {
     ev_term2_nf,            // [16] Термометр 2 не найден
     ev_term3_nf,            // [17] Термометр 3 не найден
     ev_term4_nf             // [18] Термометр 4 не найден
-    
+
 };
 // Описание cтруктур
 struct st_datetime {
     byte cHH, cMM, cSS;         // Текущее время
     byte cyy, cmo, cdd;         // Текущая дата
 };
-// Структура использующая для коррекции температуры t = Т(реальная) * 100
-struct st_eliminate {
-    signed int shift;       // Смещение базовой точки (0 - нет коррекции) [2]
-    signed char scale;      // Множитель (-127..0..126), который потом вычисляется по формуле 1+(scale/127) [1]
-};
-// typedef st_eliminates t_eliminates[MAX_DS1820];
 // Структура основных переменных в системе
 extern struct st_eeprom_par {
-    struct st_eliminate elims[MAX_DS1820];            // [3] * 4 = [12]
     byte tap_angle, fan_speed, ADC1, ADC2;        // 0x7F, 205, 0x7F, 0x7F, [4]
     int Ku, Ki, Kd;                             // 10, 0, 0 [6]
     int T_z, T_int;                             // 300, 100 [4] Время задержки, Время интегрирования
@@ -130,7 +125,6 @@ extern struct st_mode {
 extern enum en_event event;        // Текущее событие в системе
 // Описание функций
 extern void init(void);
-extern int read_term(byte);
 extern void set_cur_dt (void);
 extern void get_cur_dt (unsigned char);
 // Описание глобальных переменных
