@@ -1,4 +1,4 @@
-#summary One-sentence summary of this page.
+#summary Новый принцип работы с термометрами
 #labels termometers,places
 
 = Introduction =
