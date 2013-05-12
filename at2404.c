@@ -44,12 +44,13 @@ void eeprom_write_struct (unsigned char *struct_data, unsigned char size)
 {
     register unsigned char i;
     unsigned char s_byte;
+    #ifndef NODEBUG
     printf("Записываем SETTINGS в EEPROM [0x%x]: ", size);
-    #ifdef NODEBUG
     printf("\r\n");
     #endif
     for (i=0; i<size; i++) {
         s_byte = *struct_data;
+        // Загоняем данные в банк памяти 0
         eeprom_write(i + OFFSET_FOR_SETTING, s_byte, 0);
         #ifndef NODEBUG
         printf(" %d", s_byte);
@@ -67,7 +68,9 @@ void eeprom_write_alarm (unsigned char *struct_data, unsigned char size, unsigne
     unsigned char s_byte;
     unsigned char eeprom_offset;
     eeprom_offset = OFFSET_FOR_ALARMS + size * (num_alarm - 1);
+    #ifndef NODEBUG
     printf("Записываем ALARM #%u в EEPROM [0x%x] по адресу 0x%x:\r\n", num_alarm, size, eeprom_offset);
+    #endif
     for (i=0; i<size; i++) {
         s_byte = *struct_data;
         eeprom_write(i + eeprom_offset, s_byte, 1); // Записываем во второй банк памяти
@@ -85,8 +88,8 @@ void eeprom_read_struct (unsigned char *struct_data, unsigned char size)
 {
     register unsigned char i;
     unsigned char s_byte;
+    #ifndef NODEBUG
     printf("Считываем из EEPROM [0x%x]: ", size);
-    #ifdef NODEBUG
     printf("\r\n");
     #endif
     for (i=0; i<size; i++) {

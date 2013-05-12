@@ -14,7 +14,7 @@
 #include "keys.h"
 // Локальные макроподстановки
 #define MAJOR_VERSION 4
-#define MINOR_VERSION 2
+#define MINOR_VERSION 3
 // #define NODEBUG
 // enum
 // Определение главных структур
@@ -116,7 +116,8 @@ byte tap_angle_min = 0;   // Ограничение крана снизу от температуры
 byte fan_speed = 0;  // Скорость вентилятора
 enum en_event event;                          // Текущее событие в системе
 // Описание функций
-void printallterms(void); void lcd_primary_screen(void);
+void printallterms(unsigned char); void lcd_primary_screen(void);
+void printnewterms(void);
 void print_prim_par(unsigned char *, unsigned char);
 // Функции основного цикла
 void check_serial(void);
@@ -127,22 +128,23 @@ void update_P(int);
 void deley_run(void);
 //void update_PID(int error, int iMin, int iMax);
 void init_new_terms(unsigned char);
-void start_screen(void);
+void start_screen(unsigned char);
 // Основная программа
 void main(void) {
     // register byte i;
     byte size_prim_par;
     init();                  // Инициализация всей периферии
     #asm("sei")             // Global enable interrupts
-    start_screen();
+    start_screen(0);
     init_keys();
-    deley_run();
     // Сохраняем в EEPROM структуру prim_par
     // ppr_par = &prim_par;
     size_prim_par = sizeof(prim_par);
-    // СБРОС параметров в EEPROM к заводским установкам
+    // СБРОС параметров в EEPROM к заводским установкам, если одновременно нажаты клавиши CANCEL + ENTER
     if (!KEY_CANCEL && !KEY_ENTER) {
         unsigned char term_status;
+
+        start_screen(1);
         ds1820_devices = MAX_DS1820;
         // Сихронизация массива термометров с EEPROM
         term_status = sync_ds1820_eeprom();
@@ -151,13 +153,19 @@ void main(void) {
         printf("Запись в EEPROM заводских установок.\r\n Неопознанных термометров = %u\r\n", term_status);
     } else {
         unsigned char size_addr = size_prim_par - sizeof(prim_par.addr);
+
         if (!KEY_CANCEL) {
+            // При нажатой клавише CANCEL записываем установки по умолчанию не трогая информацию о термометрах
+            start_screen(2);
             ds1820_devices = MAX_DS1820;
             printf("Запись в EEPROM установок по умолчанию.\r\n");
             eeprom_write_struct ((unsigned char *)&prim_par, size_addr);
         }
         if (!KEY_ENTER) {
+            // При нажатой клавише ENTER записываем массив новых термометров в EEPROM
             unsigned char term_status;
+
+            start_screen(3);
             eeprom_read_struct ((char *)&prim_par, size_addr);
             ds1820_devices = MAX_DS1820;
             // Сихронизация массива термометров с EEPROM
@@ -166,9 +174,10 @@ void main(void) {
             eeprom_write_struct ((unsigned char *)&prim_par, size_prim_par);
         }
     }
+    deley_run();
     // Восстанавливаем из EEPROM структуру prim_par
     eeprom_read_struct ((char *)&prim_par, size_prim_par);
-    // printf("\r\n");
+    // Выитываем из EEPROM все термометры
     read_all_terms(INIT_MODE);
     // print_all_menu();       // Выведем на отладочную консоль все пункты меню
     sync_set_par(SYNC_TO_MENU); // Синхронизируем меню с глобальными структурами
@@ -177,7 +186,7 @@ void main(void) {
     // printf("Было %u, стало после чтение из EEPROM size=%u\r\n", sizeof(prim_par), size_prim_par);
     #ifndef NODEBUG
     // Если есть термометры, то выводим их значение
-    printallterms();
+    printallterms(0);
     #endif
     lcd_primary_screen();       // выводим стартовую картинку на экранчик
     // if (PINC.6) PORTD |= (1<<4); else PORTD &= ~(1<<4);
@@ -780,36 +789,68 @@ void update_PID(int error, int iMin, int iMax) {
             error, result, TAP_ANGLE, pTerm, iTerm, dTerm, POM_T);
 }
 */
-// Печать всех термометров
-void printallterms(void) {
+// Печать всех термометров. mode - режим печати адресов термометров. Если не 0 - печатать адреса.
+void printallterms(unsigned char print_addr) {
     int term;
     register byte i;
     unsigned char resolution;
     signed char th, tl;
-    unsigned char *spd;
+    unsigned char *spd, *address_line;
 
     if(!ds1820_devices) return;			// если термометры не обнаружены - просто выходим из функции
     spd = ds1820_show_spd();
-    // printf("\t");						// печатаем знак табуляции в терминале
+    if (print_addr) printf("Адреса термометров(ds1820_rom_codes): ");
     for(i=0; i<ds1820_devices; i++) {
         ds1820_get_resolution(&ds1820_rom_codes[i][0], &resolution);
-    	term = ds1820_temperature(&ds1820_rom_codes[i][0]);
+    	term = ds1820_temperature(ds1820_rom_codes[i]);
+    	// эквивалентно term = ds1820_temperature(&ds1820_rom_codes[i][0]);
         tl = th = 0;
-        ds1820_get_alarm(&ds1820_rom_codes[i][0], &tl, &th);
-        printf(" t%-u = %i(%-i.%-u)C[%02X%02X:%02x]%d:%d; ", i+1, term, term/100, abs(term%100), spd[1], spd[0], resolution, tl, th);
+        ds1820_get_alarm(ds1820_rom_codes[i], &tl, &th);
+        // эквивалентно ds1820_get_alarm(&ds1820_rom_codes[i][0], &tl, &th);
+        if (print_addr) {
+            address_line = address_to_LCD (ds1820_rom_codes[i]);
+            printf("[%s:%d:%d] ", address_line, tl, th);
+        } else {
+            printf(" t%-u = %i(%-i.%-u)C[%02X%02X:%02x]%d:%d; ", i+1, term, term/100, abs(term%100), spd[1], spd[0], resolution, tl, th);
+        }
     }
     printf("\r\n");
 }
+// Печать всех новых термометров
+void printnewterms(void) {
+    if (mode.new_terms) {
+        register byte i;
+        unsigned char *address_line;
 
+        printf("Неизвестных термометров(mode.ufo) - %d: ", mode.new_terms);
+        for (i = 0; i < mode.new_terms; i++) {
+            address_line = address_to_LCD (mode.ufo[i]);
+            printf("[ %s ] ", address_line);
+        }
+        printf("\r\n");
+    } else
+        printf("Новых термометров не найдено\r\n");
+}
 // Функция высвечивающая версию программы на LCD и на терминале
-void start_screen(void) {
+void start_screen(unsigned char init) {
+    lcd_clrscr();
     printf("Старт Зеньков П3. %u.%02u. Найдено %u термометров.\r\n", MAJOR_VERSION, MINOR_VERSION, ds1820_devices);
     lcd_command(LCD_DISP_ON);       // Убираем курсор с LCD
     lcd_gotoxy(0,0);        // Устанавливаем курсор в позицию 0 первой строки
     sprintf(linestr, "MTECH %u.%02u",MAJOR_VERSION, MINOR_VERSION );
     lcd_puts(linestr);
     lcd_gotoxy(0,1);                // Устанавливаем курсор в позицию 0 строки 2
-    sprintf(linestr, "Robowater ...");
+    switch (init) {
+        case 1:
+            sprintf(linestr, "FULL RESET"); break;
+        case 2:
+            sprintf(linestr, "FACTORY"); break;
+        case 3:
+            sprintf(linestr, "ONLY NEW TERMS"); break;
+        case 0:
+        default:
+            sprintf(linestr, "Robowater ..."); break;
+    }
     lcd_puts(linestr);
 }
 
@@ -861,13 +902,14 @@ void lcd_primary_screen(void) {
 void print_prim_par(unsigned char *struct_data, unsigned char size) {
     register unsigned char i;
     unsigned char s_byte;
-    printf("Состояние prim_par [%d bytes]: ", size);
+    printf("Состояние PRIM_PAR [%d bytes]: ", size);
     for (i=0; i<size; i++) {
         s_byte = *struct_data++;
         if (i < (size - 36))
             printf(" %d", s_byte);
         else
-            printf(" %X", s_byte);
+            printf("%02X ", s_byte);
+        if (i == size - 37) printf("\r\nTERMS: ");
         //
     }
     printf("\r\n");
@@ -881,7 +923,7 @@ void init_new_terms(unsigned char number) {
     // Ищем по новой все термометры
     newterms = w1_search(0xf0, ds1820_rom_codes);
     delay_ms (DS1820_ALL_DELAY);
-    printallterms();
+    printallterms(0);
     // Вычитываем TH, TL. Иными словами вычисляем индекс.
     for(i = 0; i < newterms; i++) {
         ds1820_get_alarm(&ds1820_rom_codes[i][0], &tl, &th);
@@ -909,7 +951,7 @@ void init_new_terms(unsigned char number) {
     #ifndef NODEBUG
     printf ("Новый TL = %d[%02x] по номеру %u\r\n", tl, tl, i);
     #endif
-    if (ds1820_set_alarm(&ds1820_rom_codes[i][0], tl, OUR_SIGNATURE)) {
+    if (ds1820_set_THTL(ds1820_rom_codes[i], tl, OUR_SIGNATURE)) {
         printf ("Проинициализировали термометр N%u по порядковому номеру %u\r\n", number, is_new);
         delay_ms (DS1820_ALL_DELAY);
         // Запускаем перезагрузку
@@ -936,11 +978,11 @@ void init_force_term(signed char number) {
     while (inbyte != 0x7E);
     ds1820_devices = w1_search(0xf0, ds1820_rom_codes);
     delay_ms (DS1820_ALL_DELAY);
-    printallterms();
+    printallterms(0);
     if (!ds1820_devices)
         printf("Термометры не найдены\r\n");
     else
-        if (ds1820_set_alarm(&ds1820_rom_codes[0][0], number, OUR_SIGNATURE))
+        if (ds1820_set_THTL(ds1820_rom_codes[0], number, OUR_SIGNATURE))
             printf("Термометр [%02x] успешно проинициализирован\r\n", number);
         else
             printf("Не могу проинициализировать новый термометр [%02x]\r\n", number);
@@ -949,12 +991,12 @@ void init_force_term(signed char number) {
 }
 void set_term(signed char number, signed char sign) {
     if (sign == OUR_SIGNATURE) {
-        if (ds1820_set_alarm(&ds1820_rom_codes[number][0], -2 - number, sign))
+        if (ds1820_set_THTL(ds1820_rom_codes[number], -2 - number, sign))
             printf("Термометр [%02x] успешно проинициализирован\r\n", number);
         else
             printf("Не могу проинициализировать термометр [%02x]\r\n", number);
     } else {
-        if (ds1820_set_alarm(&ds1820_rom_codes[number][0], 1, sign))
+        if (ds1820_set_THTL(ds1820_rom_codes[number], 1, sign))
             printf("Термометр [%02x] успешно очищен\r\n", number);
         else
             printf("Не могу очистить термометр [%02x]\r\n", number);
@@ -969,19 +1011,21 @@ void toggle_sound(void) {
     mode.sound = !mode.sound;
 }
 // Старт программы с задержкой
+// #define DELAY_TIME 300
+#define DELAY_TIME 30
 void deley_run(void) {
     byte i =0;
     signal_buz(LONG);
     for (i = 0; i < 7; i++){
-        delay_ms(300);
+        delay_ms(DELAY_TIME);
         signal_white(ON);
-        delay_ms(300);
+        delay_ms(DELAY_TIME);
         signal_white(OFF);
         signal_red(ON);
-        delay_ms(300);
+        delay_ms(DELAY_TIME);
         signal_red(OFF);
         signal_green(ON);
-        delay_ms(300);
+        delay_ms(DELAY_TIME);
         signal_green(OFF);
     };
 
@@ -1007,7 +1051,7 @@ void check_serial(void) {
             case 0x7A:  /* 'z' */
                 printf("Время: %02u:%02u:%02u, дата:%02u.%02u.%02u, найдено %u термометров\r\n",
                         s_dt.cHH, s_dt.cMM, s_dt.cSS, s_dt.cdd, s_dt.cmo, s_dt.cyy, ds1820_devices);
-                printallterms();
+                printallterms(0);
                 break;
             case 0x73:  /* 's' */     // переключение звука
                 toggle_sound(); break;
@@ -1017,9 +1061,12 @@ void check_serial(void) {
             case 0x78:  // символ 'x'
                 toggle_print(); break;
                 // print_curr_menu(); break; // Печатаем текущее меню
+            case 0x76: // символ 'v'
+                printallterms(1); break;
+            case 0x62: // символ 'b'
+                printnewterms(); break;
             case 0x65:  // символ 'e'
-                alarm_all_print();
-                break;
+                alarm_all_print(); break;
             case 0x64:  // символ 'd'
                 for (i=0; i < MAX_ALERTS; i++) {
                     if (!(alarm_unreg(i))) {

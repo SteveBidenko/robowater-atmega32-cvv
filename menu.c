@@ -29,7 +29,7 @@ struct st_parameter main_menu[NUM_MENU]= {   // Меню первого уровня
     {0, e_dt, 1, 4},                  // [3] Установка даты и времени
     {0, e_empty, 1, 5},               // [4] Вход в меню просмотра параметров
     {0, e_alarm, 0, 6},               // [5] АВАРИЙ НЕТ
-    {0, e_empty, 0, 7}                // [6] Вход в меню тонких настроек
+    {0, e_empty, 0, 7}                // [6] Вход в меню тонких настроек (при отладке программы установить {0, e_empty, 1, 7})
 };
 
 struct st_parameter sdt[NUM_DT]= {   // Меню Установки времени и даты
@@ -65,7 +65,15 @@ struct st_parameter settings[NUM_SETTINGS]={
     {10, e_stime, 1, 29},           // [5] время интегрирования зима T_int
     {1, e_coef, 1, 30},             // [6] Коэффициэнт усиления Ku
     {0, e_coef, 1, 31},             // [7] Дельта лето Ki
-    {0, e_coef, 1, 32}              // [8] Дельта зима Kd
+    {0, e_coef, 1, 32},             // [8] Дельта зима Kd
+    {0, e_delete, 1, 35},           // [9] Отключение термометра 1
+    {-1, e_address, 1, 36},         // [10] установка термометра 1
+    {1, e_delete, 1, 37},           // [11] Отключение термометра 2
+    {-1, e_address, 1, 38},         // [12] установка термометра 2
+    {2, e_delete, 1, 39},           // [13] Отключение термометра 3
+    {-1, e_address, 1, 40},         // [14] установка термометра 3
+    {3, e_delete, 1, 41},           // [15] Отключение термометра 4
+    {-1, e_address, 1, 42}          // [16] установка термометра 4
 };
 #define ALERT_POS 61
 struct st_parameter alerts[MAX_ALERTS] = {
@@ -114,15 +122,23 @@ flash lcd_str all_menu_str[] = {
         "ВР.Зима=",    // [28] T_int
         "КУ=",         // [29]
         "Дt Лето=",    // [30]
-        "Дt Зима=",    // [31]
-        "Сезон=",     // [32]
-        "Пароль="     // [33]
+        "Дt Зима=",     // [31]
+        "Сезон=",       // [32]
+        "Пароль=",      // [33]
+        "DEL Пом.",   // [34]
+        "SET Пом.",   // [35]
+        "DEL Ул.",    // [36]
+        "SET Ул.",    // [37]
+        "DEL WIn",    // [38]
+        "SET WIn",    // [39]
+        "DEL WOut",   // [40]
+        "SET WOut"    // [41]
     };
 char linestr[20];           // Строка для LCD
 bit need_eeprom_write;      // Флаг, если необходимо записать в EEPROM
 // Функция синхронизации структуры основных переменных
 void sync_set_par(byte sync) {
-    register byte i;
+    register byte i, j;
     // Если входим в меню
     if (sync == SYNC_TO_MENU) {
         main_menu[2].val_data = prim_par.season;
@@ -135,6 +151,24 @@ void sync_set_par(byte sync) {
         settings[6].val_data = prim_par.Ku;
         settings[7].val_data = prim_par.Ki;
         settings[8].val_data = prim_par.Kd;
+        // Здесь будет разрешение/запрет на редактирование в меню
+        for (i = 0; i < MAX_DS1820; i++) {
+            unsigned char i_set9 = 9 + (int)i * 2;
+            unsigned char i_set10 = 10 + (int)i * 2;
+
+            // Если первый байт адреса содержит 'FF' - то разрешаем установку
+            if (*prim_par.addr[i] == 0xFF) {
+                // Включаем Выключаем DEL, и включаем SET
+                settings[i_set9].can_edit = 0;
+                settings[i_set10].can_edit = (mode.new_terms) ? 1 : 0;
+            } else {
+                // Включаем Выключаем DEL, и включаем SET
+                settings[i_set9].can_edit = 1;
+                settings[i_set10].can_edit = 0;
+            }
+            settings[i_set9].val_data = i;
+            settings[i_set10].val_data = -1;
+        }
         if (mode.run == 0) {
             parameters[8].val_data = prim_par.fan_speed  ;
         };
@@ -149,6 +183,7 @@ void sync_set_par(byte sync) {
         sdt[4].val_data = s_dt.cyy;
         SEASON = prim_par.season;
     } else {
+        // Если выходим из меню
         if (mode.stop_sync_dt) {
             if ((s_dt.cHH != sdt[0].val_data) || (s_dt.cMM != sdt[1].val_data)) {
                 s_dt.cHH = sdt[0].val_data;
@@ -194,6 +229,43 @@ void sync_set_par(byte sync) {
             }
             if (prim_par.Kd != settings[8].val_data) {
                 prim_par.Kd = settings[8].val_data; need_eeprom_write = 1;
+            }
+            // Проверяем часть меню, гди идет управление термометрами
+            for (i = 0; i < MAX_DS1820; i++) {
+                unsigned char i_set9 = 9 + (int)i * 2;
+                unsigned char i_set10 = 10 + (int)i * 2;
+                int val_data_set_9 = settings[i_set9].val_data,
+                    val_data_set_10 = settings[i_set10].val_data;
+
+                // проверяем на отрицательность DEL
+                if (val_data_set_9 < 0) {
+                    ds1820_set_THTL(prim_par.addr[i], 0xFF, 0xFF);
+                    ds1820_rom_codes[i][1] = ds1820_rom_codes[i][0] = prim_par.addr[i][0] = 0xFF;
+                    // Запрещаем второй раз входить в это меню
+                    settings[i_set9].can_edit = 0;
+                    if (mode.new_terms) settings[i_set10].can_edit = 1;
+                    need_eeprom_write = 1;
+                    // Для того, чтобы второй раз не входил в этот блок
+                    settings[i_set9].val_data = i;
+                }
+                // Прверяем положительность SET
+                if (val_data_set_10 >= 0) {
+                    // printf("Перешиваем номер в ufo: settings[i_set10].val_data = %d\r\n", val_data_set_10);
+                    for (j = 0; j < 9; j++) {
+                        // Переписываем из неизвестных mode.ufo в prim_par.addr и ds1820_rom_codes
+                        ds1820_rom_codes[i][j] = prim_par.addr[i][j] = mode.ufo[val_data_set_10][j];
+                        mode.ufo[val_data_set_10][j] = mode.ufo[mode.new_terms - 1][j];
+                    }
+                    mode.new_terms--;
+                    // Прописываем в TH и TL необходимую сигнатуру
+                    printf("Прописываем в TH и TL термометра [%s]\r\n", address_to_LCD (prim_par.addr[i]));
+                    ds1820_set_THTL(prim_par.addr[i], 0xFE - i, OUR_SIGNATURE);
+                    need_eeprom_write = 1;
+                    settings[i_set9].can_edit = 1;
+                    settings[i_set10].can_edit = 0;
+                    // Для того, чтобы второй раз не входил в этот блок
+                    settings[i_set10].val_data = -1;
+                }
             }
             if (prim_par.TA_out_prs != parameters[0].val_data) {
                 prim_par.TA_out_prs = parameters[0].val_data; need_eeprom_write = 1;
@@ -246,6 +318,7 @@ char *par_str(struct st_parameter *st_pointer, unsigned char only_val, int pr_da
     char *pr_name;
     char prompt[] = "=> ";
     unsigned char sign = (pr_data < 0) ? '-' : '+';
+
     if (only_val) pr_name = prompt; else pr_name = getmenustr(st_pointer->str_num);
     switch (st_pointer->val_type) {
         case e_empty:
@@ -274,6 +347,30 @@ char *par_str(struct st_parameter *st_pointer, unsigned char only_val, int pr_da
             // Если указан тип коэффициент, то печатаем как просто число
             sprintf(linestr, "%s%u.%-01u", pr_name,  abs(pr_data)/10, abs(pr_data%10));
             //sprintf(linestr, "%s%u", pr_name, pr_data);
+            break;
+        case e_address:
+            if (only_val) {
+                // printf("[pr_data = %d]", pr_data);
+                if (pr_data < 0)
+                    sprintf(linestr, "> ...");
+                else
+                    sprintf(linestr, ">%s", address_to_LCD (mode.ufo[pr_data]));
+            } else {
+                sprintf(linestr, "%s(%d)", pr_name, mode.new_terms);
+            }
+            break;
+        case e_delete:
+            // удаление зарегистрированного термометра
+            if (only_val) {
+                if (pr_data < 0)
+                    sprintf(linestr, "> ...");
+                else
+                    sprintf(linestr, ">%s", address_to_LCD (ds1820_rom_codes[pr_data]));
+            } else {
+                // то что рисуется в первой строке
+                // printf("[e_delete: pr_data = %02i] ", pr_data);
+                sprintf(linestr, "%s", pr_name);
+            }
             break;
         case e_scale:
             // Если указан тип шкалы, то печатаем как знаковый байт (-128..127)
@@ -512,6 +609,14 @@ void lcd_edit(signed char direction) {
     switch (lmenu->val_type) {
         case e_empty:
             // curr_menu.val_data - не меняет свое значение
+            break;
+        case e_address:
+            curr_menu.val_data += (int)direction;
+            if (curr_menu.val_data >= mode.new_terms - 1) curr_menu.val_data = -1;
+            if (curr_menu.val_data < -1) curr_menu.val_data = mode.new_terms - 1;
+            break;
+        case e_delete:
+            if (direction) curr_menu.val_data = ~curr_menu.val_data;
             break;
         case e_clatsman:
         case e_winter:
