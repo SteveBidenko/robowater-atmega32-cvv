@@ -20,6 +20,7 @@
 #define INIT_MODE 1
 #define DUTY_MODE 0
 #define NOT_FOUND -9999
+#define NOT_CLEAR -9998
 #pragma used+
 // Описание внешних переменных (was cnt_rem,cnt_c,)
 extern struct __ds1820_scratch_pad_struct {
@@ -45,13 +46,14 @@ unsigned char ds1820_read_spd(unsigned char *addr);
 unsigned char ds1820_write_spd(unsigned char *addr);
 unsigned char ds1820_run_measure(unsigned char *addr);
 int ds1820_temperature(unsigned char *addr);            // без запуска на измерения
-int ds1820_temperature_10(unsigned char *addr);         // вычитываем температуру и запускаем на измерения 
+int ds1820_temperature_10(unsigned char *addr);         // вычитываем температуру и запускаем на измерения
 int ds1820_temperature_10lh(unsigned char *addr, signed char *temp_low, signed char *temp_high);
-unsigned char ds1820_set_alarm(unsigned char *addr, signed char temp_low, signed char temp_high);
+unsigned char ds1820_set_THTL(unsigned char *addr, signed char temp_low, signed char temp_high);
 signed char ds1820_get_alarm(unsigned char *addr, signed char *temp_low, signed char *temp_high);
 unsigned char ds1820_set_resolution(unsigned char *addr, unsigned char resolution);
 signed char ds1820_get_resolution(unsigned char *addr, unsigned char *resolution);
 // void print_scratch_pad (void);
+unsigned char *address_to_LCD(unsigned char *);        // преобразование адреса в строку
 unsigned char *ds1820_show_spd();
 #pragma used-
 

@@ -5,8 +5,8 @@
 #include "robowater.h"
 #include "spd1820.h"
 // #define NODEBUG             // Комментируя эту строку, даем возможность компилятору включить отладочный сервис
-/* #ifndef NODEBUG
 // Функция печатающая значение __ds1820_scratch_pad
+/*
 void print_scratch_pad (void) {
     register unsigned char i;
     unsigned char *pointer;
@@ -15,16 +15,29 @@ void print_scratch_pad (void) {
     for (i=0; i<9; i++) printf ("%02X ", *pointer++);
     printf("]");
 }
-#endif */
+*/
 // DS1820 devices ROM code storage area, 9 bytes are used for each device (see the w1_search function description in the help)
 byte ds1820_rom_codes[MAX_DS1820][9];
 struct st_terms termometers[MAX_DS1820];  // Массив значений термометров с их корректировочными параметрами
 // Структура для хранения текущего ОЗУ Dallas
 struct __ds1820_scratch_pad_struct __ds1820_scratch_pad;
+// Функция возвращающая из адреса строку для вывода на экран LCD
+unsigned char *address_to_LCD(unsigned char *address) {
+    register byte i;
+    static unsigned char lcd_line[17];     // массив символов преобразованного адреса
+
+    // при помощи sprintf преобразуем байт адреса в два символа подряд
+    for (i = 1; i < 8; i++) {
+        sprintf(lcd_line + (int)(i - 1) * 2, "%02X", *(address + i));
+    }
+    lcd_line[16] = 0;
+    return (lcd_line);
+}
 // Функция записи адресов термометра из ds1820_rom_codes в структуру EEPROM, с использованием TH и TL
 unsigned char sync_ds1820_eeprom(void) {
     unsigned char result = 0, i, j;
     signed char th, tl, get_alarm;
+    unsigned char i_ufo = 0; // обнуляем счетчик непроиницилизированных(новых) термометров
 
     for (i = 0; i < ds1820_devices; i++) {
         get_alarm = ds1820_get_alarm(&ds1820_rom_codes[i][0], &tl, &th);
@@ -32,16 +45,20 @@ unsigned char sync_ds1820_eeprom(void) {
             // Адрес термометра [i] начинается с нулевой позиции [0]
             // Если термометр имеет необходимую сигнатуру, то присваеваем значение по смещению. tl
             // Иначе присваиваем в нулевой элемент (температура в помещении)
-            for (j = 0; j < 9; j++)
+            for (j = 0; j < 9; j++) {
                 // Если термометр имеет "левую" сигнатуру, то переписываем его в массив ufo
                 if (th == OUR_SIGNATURE)
                     prim_par.addr[abs(tl) - 2][j] = ds1820_rom_codes[i][j];
                 else {
                     result++;
-                    mode.ufo[j] = ds1820_rom_codes[i][j];
+                    mode.ufo[i_ufo][j] = ds1820_rom_codes[i][j];
                 }
+            }
+            // Если есть хоть один новый термометр - увеличиваем счетчик
+            if (th != OUR_SIGNATURE) i_ufo++;
         }
     }
+    mode.new_terms = i_ufo;
     return result;
 }
 // Функция чтения адресов термометра из EEPROM в ds1820_rom_codes по порядку
@@ -159,7 +176,7 @@ int ds1820_temperature(unsigned char *addr) {
     unsigned char values[16] = { 0,6,12,19,25,31,38,44,50,56,63,69,75,81,88,94 };
     unsigned char fract;
 	int t10;
-    if (!ds1820_read_spd(addr)) return NOT_FOUND;         // Если безуспешно, то вовращаем -99.98 градусов
+    if (!ds1820_read_spd(addr)) return NOT_FOUND;         // Если безуспешно, то вовращаем -99.99 градусов
     fract = __ds1820_scratch_pad.temp_lsb & 0xF;           // values[fract] = нашей дробной части
     t10 = __ds1820_scratch_pad.temp_msb;
 	t10 = (((t10 << 8) | __ds1820_scratch_pad.temp_lsb) >> 4) * 100;
@@ -201,7 +218,7 @@ int ds1820_temperature_10lh(unsigned char *addr, signed char *temp_low, signed c
 	return t10;
 }
 // Функция установки параметров ТН и ТL выбранного DALLAS
-unsigned char ds1820_set_alarm(unsigned char *addr, signed char temp_low, signed char temp_high) {
+unsigned char ds1820_set_THTL(unsigned char *addr, signed char temp_low, signed char temp_high) {
 	if (!ds1820_read_spd(addr)) return 0;
     __ds1820_scratch_pad.temp_low = temp_low;
     __ds1820_scratch_pad.temp_high = temp_high;
@@ -213,16 +230,16 @@ unsigned char ds1820_set_alarm(unsigned char *addr, signed char temp_low, signed
 	delay_ms(15);
 	return w1_init();
 }
-// Функция добавлена 12.03.2010
+// Функция добавлена 12.03.2010, изменена 10.05.2013
 // Функция, вычитывающая из указанного Dallas temp_high и temp_low
 // Возвращает в случае успешного чтения ненулевое значение
 // Функция чтения параметров ТН и ТL выбранного DALLAS
 signed char ds1820_get_alarm(unsigned char *addr, signed char *temp_low, signed char *temp_high) {
-    if (!ds1820_read_spd(addr)) return -98;         // Если безуспешно, то вовращаем -99.98 градусов
-	// if (ds1820_read_spd(addr)==0) return 0;     // Вычитываем ScratchPAD (ОЗУ) Dallas
+    // print_scratch_pad();
+    // Вычитываем ScratchPAD (ОЗУ) Dallas
+    if (!ds1820_read_spd(addr)) return NOT_CLEAR;         // Если безуспешно, то вовращаем -99.98 градусов
     *temp_low = __ds1820_scratch_pad.temp_low;  // Вовращаем нижнюю границу Alarm
     *temp_high = __ds1820_scratch_pad.temp_high;// Возвращаем верхнюю границу Alarm
-    // print_scratch_pad();
     return 1;
 }
 // Функция установки точности выбранного DALLAS
@@ -244,8 +261,8 @@ unsigned char ds1820_set_resolution(unsigned char *addr, unsigned char resolutio
 }
 // Функция чтения параметров ТН и ТL выбранного DALLAS
 signed char ds1820_get_resolution(unsigned char *addr, unsigned char *resolution) {
-    if (!ds1820_read_spd(addr)) return -99;         // Если безуспешно, то вовращаем -99.98 градусов
-	// if (ds1820_read_spd(addr)==0) return 0;     // Вычитываем ScratchPAD (ОЗУ) Dallas
+    // Вычитываем ScratchPAD (ОЗУ) Dallas
+    if (!ds1820_read_spd(addr)) return NOT_FOUND;         // Если безуспешно, то вовращаем -99.99 градусов
     // *resolution = __ds1820_scratch_pad.conf >> 5;  // Вовращаем resolution
     *resolution = __ds1820_scratch_pad.conf;  // Вовращаем resolution
     // print_scratch_pad();
