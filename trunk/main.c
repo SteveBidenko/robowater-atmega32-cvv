@@ -14,7 +14,7 @@
 #include "keys.h"
 // Локальные макроподстановки
 #define MAJOR_VERSION 4
-#define MINOR_VERSION 3
+#define MINOR_VERSION 4
 // #define NODEBUG
 // enum
 // Определение главных структур
@@ -36,6 +36,9 @@ struct st_eeprom_par prim_par={
     (int)180, (int)100,
     (int)1500, (int)5000,
     (int)-2000, (int)1000, (int)2200,
+// перенес из boiler-control 15.05.2013
+    48, 250, 48, 250, 48, 250, 48, 250,  // Установка границ вольтажа входов и выходов
+
     {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
     1,  // Зима
     0,  // Позиция текущего alarm в EEPROM
@@ -101,12 +104,16 @@ struct st_eeprom_par prim_par={
      {0x28,0x6f,0x42,0x7e,0x03,0x00,0x00,0xca,0x01}, // 28  6F  42  7E  3   0   0   CA  1	FF	FC   Вода ВХОД
      {0x28,0x4f,0x36,0x7e,0x03,0x00,0x00,0x0e,0x01}} // 28  4F  36  7E  3   0   0   E   1	FF	FB   Вода выход
     */
-      //    Зеньков П3.
+      /*    Зеньков П3.
     {{0x28,0xc2,0x14,0x7e,0x03,0x00,0x00,0xd5,0x01}, // 28  C2  14  7E  3   0   0   D5  1	FF	FE   Помещение
      {0x28,0xd6,0x3a,0x7e,0x03,0x00,0x00,0x08,0x01}, // 28  D6  3A  7E  3   0   0   8   1	FF	FD   Улица
      {0x28,0x4f,0x4c,0x7e,0x03,0x00,0x00,0xde,0x01}, // 28  4F  4C  7E  3   0   0   DE  1	FF	FC   Вода ВХОД
      {0x28,0x0a,0x3e,0x7e,0x03,0x00,0x00,0xae,0x01}} // 28  A   3E  7E  3   0   0   AE  1   FF	FB   Вода выход
-
+     */
+     {{0xff,0xc2,0x14,0x7e,0x03,0x00,0x00,0xd5,0x01}, // 28  C2  14  7E  3   0   0   D5  1	FF	FE   Помещение
+     {0xff,0xd6,0x3a,0x7e,0x03,0x00,0x00,0x08,0x01}, // 28  D6  3A  7E  3   0   0   8   1	FF	FD   Улица
+     {0xff,0x4f,0x4c,0x7e,0x03,0x00,0x00,0xde,0x01}, // 28  4F  4C  7E  3   0   0   DE  1	FF	FC   Вода ВХОД
+     {0xff,0x0a,0x3e,0x7e,0x03,0x00,0x00,0xae,0x01}} // 28  A   3E  7E  3   0   0   AE  1   FF	FB   Вода выход
 
 
 };
@@ -206,9 +213,7 @@ void main(void) {
         tap_angle_min = prim_par.tap_angle + ((long int)((TA_IN_NOLIMIT - UL_T) * mode.k_angle_limit))/1000;   // вычисление ограничения крана по температуре воздуха на входе и коэффициенту mode.k_angle_limit
         printf(" tap_angle_min %u .   Kоэффициент :%d\r\n",  tap_angle_min, mode.k_angle_limit);
     };
-
-    if (TAP_ANGLE < tap_angle_min) TAP_ANGLE = tap_angle_min;
-       else TAP_ANGLE = prim_par.tap_angle;
+    TAP_ANGLE = (TAP_ANGLE < tap_angle_min) ? tap_angle_min : prim_par.tap_angle;
     printf(" Установка крана %u .   prim_par.tap_angle :%d\r\n",  TAP_ANGLE, prim_par.tap_angle );
     while(1) {
         // ВНИМАНИЕ! НИЖЕ ДО ОКОНЧАНИЯ ЦИКЛА WHILE КОД НЕ ДОБАВЛЯТЬ!!!
@@ -386,8 +391,8 @@ void event_processing(void) {
                         signal_green(ON);
                         printf("Включен режим Пуск\r\n");
                     };
-                    //FAN_SPEED = prim_par.fan_speed;
-                    //if (FAN_SPEED <= FAN_SPEED_MIN) FAN_SPEED = FAN_SPEED_MIN;
+                    FAN_SPEED = prim_par.fan_speed;
+                    if (FAN_SPEED <= FAN_SPEED_MIN) FAN_SPEED = FAN_SPEED_MIN;
                     //count_fan = 0;
                     time_integration = 0;
                     //time_cooling = TIME_COOLING_MAX;
