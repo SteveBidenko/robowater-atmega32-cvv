@@ -58,6 +58,7 @@ byte timer_stop = 0;
 byte timer_fan = 0;
 byte count_fan = 0;
 int time_cooling = 0;
+unsigned int count_signal = 0;
 
 // Ежесекундное прерывание
 interrupt [EXT_INT2] void ext_int2_isr(void) {
@@ -105,7 +106,7 @@ interrupt [EXT_INT2] void ext_int2_isr(void) {
     ADC_VAR2 = read_adc(0)/4;
     ADC_VAR1 = read_adc(1)/4;
     if (time_integration) time_integration--;
-    if (time_cooling ) time_cooling-- ; 
+    if (time_cooling ) time_cooling-- ;
     #ifndef NODEBUG
     // printf ("конец в %02u:%02u\r\n", s_dt.cMM, s_dt.cSS);
     #endif
@@ -127,7 +128,17 @@ interrupt [TIM0_OVF] void timer0_ovf_isr(void) {
 }
 // Timer 1 overflow interrupt service routine
 interrupt [TIM1_OVF] void timer1_ovf_isr(void) {
-    update_signal_status();
+    TCNT1 = TIM1_COUNT;
+    if  (EncState == 1) {
+          // Проверяем VALCODER_PIN1
+        if (VALCODER_PIN1) valcoder--; else valcoder++;
+        EncReady = 1;
+        EncState = 0;
+    };
+      if (count_signal == 0) {
+        update_signal_status();
+        count_signal = COUNT_SIGNAL_MAX; // установка счетчика.
+      } else count_signal--;
     if (t_key) t_key--;
 }
 //Timer 2 overflow interrupt service routine
@@ -243,9 +254,10 @@ void init(void) {
     // Compare A Match Interrupt: Off
     // Compare B Match Interrupt: Off
     */
-    TCCR1A=0x00; TCCR1B=0x02; TCNT1H=0x00; TCNT1L=0x00; 
-    ICR1H=0x00; ICR1L=0x00; 
+    TCCR1A=0x00; TCCR1B=0x01; TCNT1H=0x00; TCNT1L=0x00;
+    ICR1H=0x00; ICR1L=0x00;
     OCR1AH=0x00; OCR1AL=0x00; OCR1BH=0x00; OCR1BL=0x00;
+    TCNT1 = TIM1_COUNT;
 
     // Timer/Counter 2 initialization
     /* Clock source: System Clock
@@ -254,10 +266,10 @@ void init(void) {
     // OC2 output: Inverted PWM
     */
     // ASSR=0x00; TCCR2=0x7E; TCNT2=0x00; OCR2=0x00;
-    
-    ASSR=0x00; 
+
+    ASSR=0x00;
     TCCR2=0x6c; TCNT2=0x00; OCR2=0x00;//  Это был ПВМ
-    
+
     // External Interrupt(s) initialization
     /*
     INT0: On INT0 Mode: Falling Edge
@@ -273,7 +285,11 @@ void init(void) {
     INT2: On  INT2 Mode: Falling Edge
     MCUCR=0x07;
     */
-    GICR|=0xE0; MCUCR=0x06; MCUCSR=0x00; GIFR=0xE0;
+    GICR|=0xE0; // enable INT0, INT1, INT2
+    GICR|=0x20; // disable INT0, INT1; enable INT2
+   // GICR &= ~(1<<1);// запретил прерывание INT1 Mode
+    MCUCR=0x06; // INT1 Mode: Falling Edge; INT0 Mode: Falling Edge
+    MCUCSR=0x00; GIFR=0xE0;
     // Timer(s)/Counter(s) Interrupt(s) initialization
     TIMSK=0x45;
 

@@ -5,7 +5,7 @@
 // Определение макроподстановок
 #define NUM_MENU        7
 #define NUM_PARAMETERS  11
-#define NUM_SETTINGS    17
+#define NUM_SETTINGS    25
 #define NUM_DT 7
 
 #define SYNC_TO_MENU 1
@@ -19,10 +19,10 @@
 #define UL_T parameters[2].val_data
 #define WIN_T parameters[3].val_data
 #define WOUT_T parameters[4].val_data
-#define TAP_ANGLE parameters[6].val_data
-#define FAN_SPEED parameters[8].val_data
 #define ADC_VAR1 parameters[5].val_data
+#define TAP_ANGLE parameters[6].val_data
 #define ADC_VAR2 parameters[7].val_data
+#define FAN_SPEED parameters[8].val_data
 #define FAN_VAR parameters[9].val_data
 #define POMP_VAR parameters[10].val_data
 #define SEASON sdt[5].val_data
@@ -60,7 +60,12 @@ enum en_type {
     e_alert,                  // Конкретная тревога
     e_password,               // Числовой пароль -32766..32767
     e_delete,                 // Переключатель УДАЛЯТЬ/Нет\
-    e_address                 // Ghbpyf
+    e_address,                // MAC адрес термометра
+    // перенес из boiler-control 15.05.2013
+    e_PWM1,                    // ШИМ  Только положительное значение (0..255)
+    e_ADC1,                    // АЦП  Только положительное значение (0..255)
+    e_PWM2,                    // ШИМ  Только положительное значение (0..255)
+    e_ADC2                     // АЦП  Только положительное значение (0..255)
 };
 // Определение структур
 // Прототип одного параметра системы. Нужен для организации массива параметров системы
@@ -106,6 +111,7 @@ extern void lcd_edit(signed char);
 extern char *param_str(unsigned char, struct st_parameter parameter[]);
 extern char *par_str(struct st_parameter *, unsigned char, int);
 extern char *getmenustr(unsigned char menu_num_pp);
-//extern void calc_percent
+// перенес из boiler-control 15.05.2013
+extern int calc_percent(unsigned char, unsigned char, unsigned char);
 // extern unsigned char next_menu(signed char *menu_level, signed char menu_choice);
 #endif

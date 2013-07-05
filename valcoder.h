@@ -5,15 +5,12 @@
 #define VALCODER_PIN1 (PIND.3)
 #define VALCODER_DISABLE() GICR &= ~(3<<6)
 #define VALCODER_ENABLE() GICR |= (3<<6)
-// #define VALCODER_TO_LEFT -1
-// #define VALCODER_TO_RIGHT 1
 #define VALCODER_NO_ROTATE 0
 #define VALCODER_DELAY 15
 #define VALCODER_SENSITY 1
 // ќписание функций
 // ќписание глобальных переменных
-// extern byte valcoder0, valcoder1;
-// extern word counter0, counter1;
-// extern int valcoder;
 extern signed char valcoder;
+extern unsigned char EncState; // было прерывание вращени€ INT0
+extern unsigned char EncReady; // Ёнкодер обработан
 #endif

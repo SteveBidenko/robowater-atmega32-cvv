@@ -29,7 +29,7 @@ struct st_parameter main_menu[NUM_MENU]= {   // Меню первого уровня
     {0, e_dt, 1, 4},                  // [3] Установка даты и времени
     {0, e_empty, 1, 5},               // [4] Вход в меню просмотра параметров
     {0, e_alarm, 0, 6},               // [5] АВАРИЙ НЕТ
-    {0, e_empty, 0, 7}                // [6] Вход в меню тонких настроек (при отладке программы установить {0, e_empty, 1, 7})
+    {0, e_empty, 1, 7}                // [6] Вход в меню тонких настроек (при отладке программы установить {0, e_empty, 1, 7})
 };
 
 struct st_parameter sdt[NUM_DT]= {   // Меню Установки времени и даты
@@ -73,7 +73,16 @@ struct st_parameter settings[NUM_SETTINGS]={
     {2, e_delete, 1, 39},           // [13] Отключение термометра 3
     {-1, e_address, 1, 40},         // [14] установка термометра 3
     {3, e_delete, 1, 41},           // [15] Отключение термометра 4
-    {-1, e_address, 1, 42}          // [16] установка термометра 4
+    {-1, e_address, 1, 42},         // [16] установка термометра 4
+// перенес из boiler-control 15.05.2013
+    {48, e_PWM1, 1, 43},             // [17] Установка нижней границы выхода1
+    {250, e_PWM1, 1, 44},            // [18] Установка верхней границы выхода1
+    {48, e_ADC1, 1, 45},             // [19] Установка нижней границы входа1
+    {250, e_ADC1, 1, 46},            // [20] Установка верхней границы входа1
+    {48, e_PWM2, 1, 47},             // [21] Установка нижней границы выхода2
+    {250, e_PWM2, 1, 48},            // [22] Установка верхней границы выхода2
+    {48, e_ADC2, 1, 49},             // [23] Установка нижней границы входа2
+    {250, e_ADC2, 1, 50}             // [24] Установка верхней границы входа2
 };
 #define ALERT_POS 61
 struct st_parameter alerts[MAX_ALERTS] = {
@@ -132,7 +141,16 @@ flash lcd_str all_menu_str[] = {
         "DEL WIn",    // [38]
         "SET WIn",    // [39]
         "DEL WOut",   // [40]
-        "SET WOut"    // [41]
+        "SET WOut",   // [41]
+// перенес из boiler-control 15.05.2013
+        "Вых1.снизу=",      // [42] Установление вых1 напряжение снизу
+        "Вых1.сверху=",     // [43] Установление вых1 напряжение снизу
+        "Вх1.снизу=",       // [44] Установление вых1 напряжение снизу
+        "Вх1.сверху=",      // [45] Установление вых1 напряжение снизу
+        "Вых2.снизу=",      // [46] Установление вых2 напряжение снизу
+        "Вых2.сверху=",     // [47] Установление вых2 напряжение снизу
+        "Вх2.снизу= ",       // [48] Установление вых2 напряжение снизу
+        "Вх2.сверху="       // [49] Установление вых2 напряжение снизу
     };
 char linestr[20];           // Строка для LCD
 bit need_eeprom_write;      // Флаг, если необходимо записать в EEPROM
@@ -151,6 +169,16 @@ void sync_set_par(byte sync) {
         settings[6].val_data = prim_par.Ku;
         settings[7].val_data = prim_par.Ki;
         settings[8].val_data = prim_par.Kd;
+// перенес из boiler-control 15.05.2013
+        settings[17].val_data = prim_par.PWM1_lo;
+        settings[18].val_data = prim_par.PWM1_hi;
+        settings[19].val_data = prim_par.ADC1_lo;
+        settings[20].val_data = prim_par.ADC1_hi;
+        settings[21].val_data = prim_par.PWM2_lo;
+        settings[22].val_data = prim_par.PWM2_hi;
+        settings[23].val_data = prim_par.ADC2_lo;
+        settings[24].val_data = prim_par.ADC2_hi;
+
         // Здесь будет разрешение/запрет на редактирование в меню
         for (i = 0; i < MAX_DS1820; i++) {
             unsigned char i_set9 = 9 + (int)i * 2;
@@ -172,7 +200,8 @@ void sync_set_par(byte sync) {
         if (mode.run == 0) {
             parameters[8].val_data = prim_par.fan_speed  ;
         };
-        //parameters[8].val_data = fan_speed;
+
+        //parameters[8].val_data = FAN_SPEED;// 12.06.2013
         parameters[0].val_data = prim_par.TA_out_prs;
         parameters[10].val_data = mode.pomp;
         // printf("Чтени времени и даты \r\n");
@@ -230,6 +259,32 @@ void sync_set_par(byte sync) {
             if (prim_par.Kd != settings[8].val_data) {
                 prim_par.Kd = settings[8].val_data; need_eeprom_write = 1;
             }
+// перенес из boiler-control 15.05.2013
+            if (prim_par.PWM1_lo != settings[17].val_data) {
+                prim_par.PWM1_lo = settings[17].val_data; need_eeprom_write = 1;
+            }
+            if (prim_par.PWM1_hi != settings[18].val_data) {
+                prim_par.PWM1_hi = settings[18].val_data; need_eeprom_write = 1;
+            }
+            if (prim_par.ADC1_lo != settings[19].val_data) {
+                prim_par.ADC1_lo = settings[19].val_data; need_eeprom_write = 1;
+            }
+            if (prim_par.ADC1_hi != settings[20].val_data) {
+                prim_par.ADC1_hi = settings[20].val_data; need_eeprom_write = 1;
+            }
+            if (prim_par.PWM2_lo != settings[21].val_data) {
+                prim_par.PWM2_lo = settings[21].val_data; need_eeprom_write = 1;
+            }
+            if (prim_par.PWM2_hi != settings[22].val_data) {
+                prim_par.PWM2_hi = settings[22].val_data; need_eeprom_write = 1;
+            }
+            if (prim_par.ADC2_lo != settings[23].val_data) {
+                prim_par.ADC2_lo = settings[23].val_data; need_eeprom_write = 1;
+            }
+            if (prim_par.ADC2_hi != settings[24].val_data) {
+                prim_par.ADC2_hi = settings[24].val_data; need_eeprom_write = 1;
+            }
+
             // Проверяем часть меню, гди идет управление термометрами
             for (i = 0; i < MAX_DS1820; i++) {
                 unsigned char i_set9 = 9 + (int)i * 2;
@@ -271,8 +326,8 @@ void sync_set_par(byte sync) {
                 prim_par.TA_out_prs = parameters[0].val_data; need_eeprom_write = 1;
             };
             if (mode.run == 0) {
-            if (prim_par.fan_speed  != parameters[8].val_data) {
-                if (parameters[8].val_data <= FAN_SPEED_MIN) parameters[8].val_data = FAN_SPEED_MIN;
+                if (prim_par.fan_speed  != parameters[8].val_data) {
+                    if (parameters[8].val_data <= FAN_SPEED_MIN) parameters[8].val_data = FAN_SPEED_MIN;
                     prim_par.fan_speed = parameters[8].val_data; need_eeprom_write = 1;
                 };
             };
@@ -318,6 +373,7 @@ char *par_str(struct st_parameter *st_pointer, unsigned char only_val, int pr_da
     char *pr_name;
     char prompt[] = "=> ";
     unsigned char sign = (pr_data < 0) ? '-' : '+';
+    int percent;
 
     if (only_val) pr_name = prompt; else pr_name = getmenustr(st_pointer->str_num);
     switch (st_pointer->val_type) {
@@ -333,16 +389,34 @@ char *par_str(struct st_parameter *st_pointer, unsigned char only_val, int pr_da
             break;
         case e_percent:
             // Если указан тип проценты, то печатаем как проценты
-            if (pr_data <= prim_par.tap_angle ) pr_data = prim_par.tap_angle;
-            if (pr_data >= PWM_MAX ) pr_data = PWM_MAX;
-            sprintf(linestr, "%s%u%%", pr_name, ((pr_data -  prim_par.tap_angle)*100)/(PWM_MAX -  prim_par.tap_angle));
+            //printf("LCDLine=%u, dir=%u, line0=%u, line1=%u\r\n", curr_menu.lcd, direction, curr_menu.line0, curr_menu.line1);
+            //if (pr_data <= prim_par.tap_angle ) pr_data = prim_par.tap_angle;
+            //if (pr_data >= PWM_MAX ) pr_data = PWM_MAX;
+
+            // Пробую 16.05.2013
+
+            // sprintf(linestr, "%s%u%%", pr_name, ((pr_data -  prim_par.tap_angle)*100)/(PWM_MAX -  prim_par.tap_angle));
             //sprintf(linestr, "%s%u%%", pr_name, pr_data);
+            switch ( st_pointer->str_num ) {
+                case (18): percent = calc_percent(pr_data, prim_par.ADC1_lo, prim_par.ADC1_hi); break;   // Текущее состояние крана (АЦП1)
+                case (19): percent = calc_percent(pr_data, prim_par.PWM1_lo, prim_par.PWM1_hi); break;   // Заданное состояние крана (PWM1)
+                case (20): percent = calc_percent(pr_data, prim_par.ADC2_lo, prim_par.ADC2_hi); break;   // Текущее состояние вентилятора (АЦП2)
+                case (21): percent = calc_percent(pr_data, prim_par.PWM2_lo, prim_par.PWM2_hi); break;   // Заданное состояние крана (PWM2)
+            };
+            //sprintf(linestr, "%s%u.%-01u%%", pr_name, abs(percent/10), abs(percent%10));
+            sprintf(linestr, "%s%u%%", pr_name, abs(percent/10));
+            //printf("[%d]", st_pointer->str_num);
+            // sprintf(linestr, "%s%u%%", pr_name, pr_data);
+            //printf("[%d]%u", st_pointer->str_num, pr_data);
+            printf("[%d]%u", st_pointer->str_num, FAN_SPEED);
             break;
-         //case e_percent:
-            // Если указан тип проценты, то печатаем как проценты
-            //sprintf(linestr, "%s%u%%", pr_name, (pr_data*100)/0xFF);
-            //sprintf(linestr, "%s%u%%", pr_name, pr_data);
-         //   break;
+        // перенес из boiler-control 15.05.2013
+        case e_PWM1: // Если указан тип e_PWM или e_ADC, то печатаем как просто число
+        case e_ADC1:
+        case e_PWM2:
+        case e_ADC2:
+            sprintf(linestr, "%s%u", pr_name, pr_data);
+            break;
         case e_coef:
             // Если указан тип коэффициент, то печатаем как просто число
             sprintf(linestr, "%s%u.%-01u", pr_name,  abs(pr_data)/10, abs(pr_data%10));
@@ -651,14 +725,41 @@ void lcd_edit(signed char direction) {
             if (curr_menu.val_data > 10000) curr_menu.val_data = 500;
             if (curr_menu.val_data < 500) curr_menu.val_data = 10000;
             break;
-        case e_percent:
-            // Изменение порцентов идет с шагом +/-1 %
+            case e_percent:
+             // Изменение порцентов идет с шагом +/-1 %
             curr_menu.val_data += direction;
             //  curr_menu.val_data += 3*direction;
             //if (curr_menu.val_data > 0xFF) curr_menu.val_data = 0;
             //if (curr_menu.val_data < 0) curr_menu.val_data = 0xFF;
             if (curr_menu.val_data >= PWM_MAX) curr_menu.val_data = PWM_MAX;
             if (curr_menu.val_data <= prim_par.tap_angle) curr_menu.val_data = prim_par.tap_angle;
+            break;
+        case e_ADC1: // перенес из boiler-control 15.05.2013
+            //mode.run = mo_setup_output;
+            curr_menu.val_data = ADC_VAR1;
+            break;
+        case e_ADC2:
+            //mode.run = mo_setup_output;
+            curr_menu.val_data = ADC_VAR2;
+            break;
+        case e_PWM1:
+            //mode.run = mo_setup_input;
+            curr_menu.val_data += direction;
+            if (curr_menu.val_data < 0 ) curr_menu.val_data = 0xFF;
+            if (curr_menu.val_data > 0xFF) curr_menu.val_data = 0;
+            //TAP_ANGLE = curr_menu.val_data;
+            //if (curr_menu.val_data >= prim_par.PWM1_hi) curr_menu.val_data = prim_par.PWM1_hi;
+            //if (curr_menu.val_data <= prim_par.tap_angle) curr_menu.val_data = prim_par.tap_angle;
+            //  if (curr_menu.val_data <= prim_par.PWM1_lo) curr_menu.val_data = prim_par.PWM1_lo;
+            break;
+        case e_PWM2:
+            //mode.run = mo_setup_input;
+            curr_menu.val_data += direction;
+            if (curr_menu.val_data < 0 ) curr_menu.val_data = 0xFF;
+            if (curr_menu.val_data > 0xFF) curr_menu.val_data = 0;
+            //FAN_SPEED = curr_menu.val_data ;
+            //if (curr_menu.val_data >= prim_par.PWM2_hi) curr_menu.val_data = prim_par.PWM2_hi;
+            //if (curr_menu.val_data <= prim_par.PWM2_lo) curr_menu.val_data = prim_par.PWM2_lo;
             break;
         case e_coef:
             curr_menu.val_data += direction;
@@ -748,4 +849,19 @@ char *getmenustr(unsigned char menu_num_pp) {
         return menustr;
     } else
         return NULL;
+}
+// перенес из boiler-control 15.05.2013
+// Функция преобразования абсолютного значения относительно границ в %
+// Возможны ошибки если lo > ( ? >=) hi
+int calc_percent(unsigned char x, unsigned char lo, unsigned char hi) {
+    long result;
+    if (x <= lo )
+        result = 0;
+    else {
+        if (x >= hi ) result = 1000;
+            else
+            result = (long)(x - lo)* 1000 / (hi - lo);
+    }
+
+    return ((int) result);
 }

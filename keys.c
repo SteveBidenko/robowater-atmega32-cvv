@@ -107,7 +107,7 @@ void poll_key(unsigned char i) {
         case KEY_ON:
             if (pin_val == KEY_OFF) {
                 keys[i].status = KEY_POLL;
-                VALCODER_DISABLE();
+                VALCODER_DISABLE();  // Отрубаем обе лапы вращения
                 keys[i].on = 0;
                 keys[i].off = 1;
                 keys[i].last = KEY_ON;
@@ -116,7 +116,7 @@ void poll_key(unsigned char i) {
         case KEY_OFF:
             if (pin_val == KEY_ON) {
                 keys[i].status = KEY_POLL;
-                VALCODER_DISABLE();
+                VALCODER_DISABLE();  // Отрубаем обе лапы вращения
                 keys[i].on = 1;
                 keys[i].off = 0;
                 keys[i].last = KEY_OFF;
@@ -127,8 +127,7 @@ void poll_key(unsigned char i) {
             // Выборы окончены?
             if (keys[i].on >= MAX_POLL || keys[i].off >= MAX_POLL) {
                 keys[i].status = (keys[i].on > keys[i].off) ? KEY_ON : KEY_OFF;
-                //printf(".");
-                VALCODER_ENABLE();
+                VALCODER_ENABLE();   // Разрешаем обе лапы вращения
                 // if (keys[i].status != keys[i].last)
                     // printf ("Адрес: 0x%x, Нога: %d, Значение: %d, предыдущее значение %d\r\n",
                     //     keys[i].reg, keys[i].pin, keys[i].status, keys[i].last);
