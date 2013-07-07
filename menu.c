@@ -74,7 +74,6 @@ struct st_parameter settings[NUM_SETTINGS]={
     {-1, e_address, 1, 40},         // [14] установка термометра 3
     {3, e_delete, 1, 41},           // [15] Отключение термометра 4
     {-1, e_address, 1, 42},         // [16] установка термометра 4
-// перенес из boiler-control 15.05.2013
     {48, e_PWM1, 1, 43},             // [17] Установка нижней границы выхода1
     {250, e_PWM1, 1, 44},            // [18] Установка верхней границы выхода1
     {48, e_ADC1, 1, 45},             // [19] Установка нижней границы входа1
@@ -142,7 +141,6 @@ flash lcd_str all_menu_str[] = {
         "SET WIn",    // [39]
         "DEL WOut",   // [40]
         "SET WOut",   // [41]
-// перенес из boiler-control 15.05.2013
         "Вых1.снизу=",      // [42] Установление вых1 напряжение снизу
         "Вых1.сверху=",     // [43] Установление вых1 напряжение снизу
         "Вх1.снизу=",       // [44] Установление вых1 напряжение снизу
@@ -169,7 +167,7 @@ void sync_set_par(byte sync) {
         settings[6].val_data = prim_par.Ku;
         settings[7].val_data = prim_par.Ki;
         settings[8].val_data = prim_par.Kd;
-// перенес из boiler-control 15.05.2013
+        // перенес из boiler-control 15.05.2013
         settings[17].val_data = prim_par.PWM1_lo;
         settings[18].val_data = prim_par.PWM1_hi;
         settings[19].val_data = prim_par.ADC1_lo;
@@ -197,7 +195,7 @@ void sync_set_par(byte sync) {
             settings[i_set9].val_data = i;
             settings[i_set10].val_data = -1;
         }
-        if (mode.run == 0) {
+        if (mode.run == mo_stop) {  // Запоминает только в режиме останова
             parameters[8].val_data = prim_par.fan_speed  ;
         };
 
@@ -259,7 +257,7 @@ void sync_set_par(byte sync) {
             if (prim_par.Kd != settings[8].val_data) {
                 prim_par.Kd = settings[8].val_data; need_eeprom_write = 1;
             }
-// перенес из boiler-control 15.05.2013
+            // перенес из boiler-control 15.05.2013
             if (prim_par.PWM1_lo != settings[17].val_data) {
                 prim_par.PWM1_lo = settings[17].val_data; need_eeprom_write = 1;
             }
@@ -325,7 +323,7 @@ void sync_set_par(byte sync) {
             if (prim_par.TA_out_prs != parameters[0].val_data) {
                 prim_par.TA_out_prs = parameters[0].val_data; need_eeprom_write = 1;
             };
-            if (mode.run == 0) {
+            if (mode.run == mo_stop) {
                 if (prim_par.fan_speed  != parameters[8].val_data) {
                     if (parameters[8].val_data <= FAN_SPEED_MIN) parameters[8].val_data = FAN_SPEED_MIN;
                     prim_par.fan_speed = parameters[8].val_data; need_eeprom_write = 1;
@@ -334,7 +332,7 @@ void sync_set_par(byte sync) {
             if (mode.pomp  != parameters[10].val_data) {
                 mode.pomp = parameters[10].val_data;
             };
-            if (mode.run != main_menu[1].val_data) {
+            if ((int)mode.run != main_menu[1].val_data) {
                 mode.initrun = (unsigned char)main_menu[1].val_data + 4;
             };
             for (i = 0; i < MAX_ALERTS; i++) {
@@ -451,13 +449,14 @@ char *par_str(struct st_parameter *st_pointer, unsigned char only_val, int pr_da
             sprintf(linestr, "%s%d", pr_name, pr_data);
             break;
         case e_isfour:
-            main_menu[1].val_data = mode.run;
+            MAIN_MODE = (int)mode.run;
             // Если указан тип режим, то печатаем со словами (00 - стоп, 01 - прогрев, 10 - остановка, 11 - пуск)
             switch (pr_data) {
-                case 0: sprintf(linestr, "%sСТОП", pr_name);  break;   //mode.run=0 ;
-                case 1: sprintf(linestr, "%sПРОГРЕВ", pr_name); break; //mode.run=1;
-                case 2: sprintf(linestr, "%sОСТАНОВ", pr_name); break; //mode.run=2 ;
-                case 3: sprintf(linestr, "%sПУСК", pr_name);  ; break; //mode.run=3
+                case 0: sprintf(linestr, "%sСТОП", pr_name);  break;    //mode.run = mo_stop;
+                case 1: sprintf(linestr, "%sПРОГРЕВ", pr_name); break;  //mode.run = mo_warming_up;
+                case 2: sprintf(linestr, "%sОСТАНОВ", pr_name); break;  //mode.run = mo_warming_down;
+                case 3: sprintf(linestr, "%sПУСК", pr_name);  ; break;  //mode.run = mo_action;
+                case 6: sprintf(linestr, "%sТО", pr_name);  ; break;    //mode.run = mo_to;
                 default: break;
             };
             break;
@@ -699,7 +698,9 @@ void lcd_edit(signed char direction) {
             // curr_menu.val_data = ~curr_menu.val_data;
             break;
         case e_isfour:
-            if (direction) if (curr_menu.val_data) curr_menu.val_data = 0; else curr_menu.val_data = 3;
+            curr_menu.val_data += 3 * direction;
+            if (curr_menu.val_data > 6) curr_menu.val_data = 0;
+            if (curr_menu.val_data < 0) curr_menu.val_data = 6;
             break;
         case e_temperature:
             // Изменение температуры идет с шагом +/-0,1 градуса
@@ -735,15 +736,15 @@ void lcd_edit(signed char direction) {
             if (curr_menu.val_data <= prim_par.tap_angle) curr_menu.val_data = prim_par.tap_angle;
             break;
         case e_ADC1: // перенес из boiler-control 15.05.2013
-            //mode.run = mo_setup_output;
+            mode.run = mo_setup_input1;
             curr_menu.val_data = ADC_VAR1;
             break;
         case e_ADC2:
-            //mode.run = mo_setup_output;
+            mode.run = mo_setup_input2;
             curr_menu.val_data = ADC_VAR2;
             break;
         case e_PWM1:
-            //mode.run = mo_setup_input;
+            mode.run = mo_setup_output1;
             curr_menu.val_data += direction;
             if (curr_menu.val_data < 0 ) curr_menu.val_data = 0xFF;
             if (curr_menu.val_data > 0xFF) curr_menu.val_data = 0;
@@ -753,7 +754,7 @@ void lcd_edit(signed char direction) {
             //  if (curr_menu.val_data <= prim_par.PWM1_lo) curr_menu.val_data = prim_par.PWM1_lo;
             break;
         case e_PWM2:
-            //mode.run = mo_setup_input;
+            mode.run = mo_setup_output2;
             curr_menu.val_data += direction;
             if (curr_menu.val_data < 0 ) curr_menu.val_data = 0xFF;
             if (curr_menu.val_data > 0xFF) curr_menu.val_data = 0;

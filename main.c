@@ -27,7 +27,7 @@
 // TA_out_Min -Температура Воздуха на выходе мин +15 С.
 // TA_out_prs -Температура Воздуха на выходе установленная +20 С.(Заданная)
 unsigned char key_treated[7] = {0,0,0,0,0,0,0} ;
-struct st_mode mode = {0, 0, 0, 0, 0, 0, 1, 0.0,0,0,0};  // Текущий режим работы
+struct st_mode mode = {0, mo_stop, 0, 0, 0, 0, 1, 0.0,0,0,0};  // Текущий режим работы
 struct st_datetime s_dt;
 // Начальные установки структуры основных переменных
 struct st_eeprom_par prim_par={
@@ -131,6 +131,10 @@ void check_serial(void);
 void check_peripheral(void);
 void event_processing(void);
 void mode_processing(void);
+void keep_life_in_winter(void); // поддержка работоспособности системы зимой
+void winter_fan_speed(void);    // регулирование вентилятора зимой
+void winter_regulator(void);    // Подпрограмма регулирования калорифера зимой
+void coolant_regulator(void);   // Подпрограмма регулирования охладителя (не зимой)
 void update_P(int);
 void deley_run(void);
 //void update_PID(int error, int iMin, int iMax);
@@ -209,7 +213,7 @@ void main(void) {
     WOUT_T = termometers[3].t;
     tmp_delta = abs(prim_par.TA_in_Min) + TA_IN_NOLIMIT;  // вычисление диапазона работы ограничителя крана по температуре
     mode.k_angle_limit = ((TAP_ANGLE_LIMIT * 1000) / tmp_delta); // вычисление коэффициента ограничения крана для заданных настроек
-     if (UL_T < TA_IN_NOLIMIT) {    // Вычисление угла ограничения (UL_T < TA_IN_NOLIMIT)
+    if (UL_T < TA_IN_NOLIMIT) {    // Вычисление угла ограничения (UL_T < TA_IN_NOLIMIT)
         tap_angle_min = prim_par.tap_angle + ((long int)((TA_IN_NOLIMIT - UL_T) * mode.k_angle_limit))/1000;   // вычисление ограничения крана по температуре воздуха на входе и коэффициенту mode.k_angle_limit
         printf(" tap_angle_min %u .   Kоэффициент :%d\r\n",  tap_angle_min, mode.k_angle_limit);
     };
@@ -275,11 +279,10 @@ void check_peripheral(void) {
             (termometers[3].t < prim_par.TW_out_Min)) // Температура воды обратки ниже критической WOUT_T
             event = ev_freezing3;
     }
+    // Проверяем, что из меню была задана команда ПУСК или СТОП
     if (CHECK_EVENT && (mode.initrun)) {
         mode.initrun -= 4;
-        if ((mode.initrun) && (IS_ALERT == 0)) event = ev_start;
-       else
-            event = ev_stop;
+        event = (mode.initrun && (IS_ALERT == 0)) ? ev_start : ev_stop;
         mode.initrun = 0;
     }
     #ifndef NODEBUG
@@ -304,15 +307,10 @@ void event_processing(void) {
             WOUT_T = read_term(3);
             switch (mode.menu) {
                 case 0: lcd_primary_screen(); break;
+                // case 2: lcd_edit(0); break;
                 case 1: lcd_menu(0); break;
                 default: ;
-                // case 2: lcd_edit(0); break;
             }
-            //if (!mode.print && (mode.run ==1)) printf("-");
-            if (mode.print && (mode.run ==1)) printf("-");
-            //if (mode.print && (mode.run ==3) && (prim_par.season)) printf (" ПУСК Зима: %u\r\n", time_integration);
-            //if (mode.print && (mode.run ==3) && !(prim_par.season)) printf (" ПУСК Лето: %u\r\n", time_cooling);
-            //if (mode.print && (mode.run ==0)) printf ("До следующего измерения СТОП: %u\r\n", timer_fan);
             event = ev_none;            // Очищаем событие
             break;
         case ev_left:                   // printf ("Обрабатываем прокрутку valcoder влево\r\n");
@@ -373,11 +371,11 @@ void event_processing(void) {
             key_treated[1]=1;
             printf ("Нажата кнопка ПУСК. ");
             switch (mode.run) {
-                case 0: { // Процесс старта вентилятора
+                case mo_stop: // Если сейчас режим STOP
                     if (prim_par.season) {
                         signal_white(ON);
                         mode.pomp = 1;
-                        mode.run = 1;                // Устанавливаем режим Прогрев
+                        mode.run = mo_warming_up;     // Устанавливаем режим Прогрев
                         timer_start = TIME_START;
                         //timer_start = prim_par.T_z; // TIMER_INACTIVE  ...Запускаем таймер STRT
                         TAP_ANGLE = PWM_MAX;
@@ -386,7 +384,7 @@ void event_processing(void) {
                     } else {
                         signal_white(OFF);
                         mode.pomp = 0;
-                        mode.run = 3;
+                        mode.run = mo_action;
                         mode.fan = 1;
                         signal_green(ON);
                         printf("Включен режим Пуск\r\n");
@@ -398,15 +396,15 @@ void event_processing(void) {
                     //time_cooling = TIME_COOLING_MAX;
                     time_cooling = prim_par.T_z;
                     signal_buz(LONG);
-                    break;
-                } //mode.run=0 ;
-                case 1: signal_buz(SHORT); signal_green(SHORT); printf("Режим Прогрев.\r\n");
-                    break; // mode.run=1;
-                case 2: signal_buz(SHORT); signal_green(LONG); printf("Режим Остановки.\r\n");
-                    break; // mode.run=2 ;
-                case 3: signal_buz(SHORT); signal_green(ON); printf("Режим Пуск.\r\n");
-                    break; // mode.run=3
-            default: break;
+                    break; // mo_stop
+                case mo_warming_up:
+                    signal_buz(SHORT);
+                    if (mode.print) printf("Режим Прогрев.\r\n");
+                    break; // mo_warming_up
+                case mo_action: signal_buz(SHORT);
+                    if (mode.print) printf("Режим Пуск.\r\n");
+                    break; // mo_action
+                default: break;
             };
             event = ev_none;
             break;
@@ -414,21 +412,29 @@ void event_processing(void) {
             key_treated[0]=1;
             printf ("Нажата кнопка СТОП. ");
             switch (mode.run) {
-                case 0: signal_buz(SHORT); time_integration = 0; signal_green(OFF); printf(" Режим СТОП.\r\n"); break; //mode.run=0 ;
-                case 1: mode.run = 2;
-                        timer_start = 0;
-                        signal_green(SHORT);  signal_buz(LONG);
-                        printf ("Включен режим Остановки\r\n");
-                        timer_stop = TIME_STOP;    // Запускаем таймер STOP
-                        time_integration = 0;
+                case mo_stop: signal_buz(SHORT); time_integration = 0;
+                    if (mode.print) printf(" Режим СТОП.\r\n");
+                    break; // mo_stop
+                case mo_warming_up: mode.run = mo_warming_down;
+                    timer_start = 0;
+                    signal_green(SHORT);  signal_buz(LONG);
+                    if (mode.print) printf ("Включен режим Остановки\r\n");
+                    timer_stop = TIME_STOP;    // Запускаем таймер STOP
+                    time_integration = 0;
                     break; //mode.run=1;
-                case 2: signal_buz(SHORT); time_integration = 0; printf("Режим Остановки.\r\n"); break; //mode.run=2 ;
-                case 3: mode.run = 2;
-                        signal_green(LONG); signal_buz(LONG);
-                        printf ("Включен режим Остановки\r\n");
-                        time_cooling = 0;
-                        timer_stop = TIME_STOP;    // Запускаем таймер STOP
-                        time_integration = 0; break; //mode.run=3
+                case mo_warming_down:
+                    signal_buz(SHORT);
+                    time_integration = 0;
+                    if (mode.print) printf("Режим Остановки.\r\n");
+                    break; // mo_warming_down
+                case mo_action:
+                    mode.run = mo_warming_down;
+                    signal_green(LONG); signal_buz(LONG);
+                    if (mode.print) printf ("Включен режим Остановки\r\n");
+                    time_cooling = 0;
+                    timer_stop = TIME_STOP;    // Запускаем таймер STOP
+                    time_integration = 0;
+                    break; // mo_action
                 default: break;
             }
             mode.fan = 0;  // Выключение Вентилятора
@@ -436,7 +442,7 @@ void event_processing(void) {
             break;
         case ev_alarm1:   // Пожар, перегрев вентилятора, авария частотника
             signal_red(ON); signal_buz(MEANDR);
-            mode.run = 0;
+            mode.run = mo_stop;
             mode.fan = 0;
             if (prim_par.season) mode.pomp = 1; // Проверить
             TAP_ANGLE = PWM_MAX;
@@ -447,7 +453,7 @@ void event_processing(void) {
             break;
         case ev_alarm2:   // Угроза замораживания от внешнего датчика
             signal_red(ON); signal_buz(MEANDR);
-            mode.run = 0;
+            mode.run = mo_stop;
             mode.fan = 0;
             mode.pomp = 1;
             TAP_ANGLE = PWM_MAX;
@@ -461,7 +467,7 @@ void event_processing(void) {
             signal_red(SHORT);
             signal_buz(MEANDR);
             //signal_green(SHORT);
-            mode.run = 0; // Режим оттаивания
+            mode.run = mo_stop; // Режим оттаивания
             mode.fan = 0;
 
             if (prim_par.season) mode.pomp = 1;
@@ -473,7 +479,7 @@ void event_processing(void) {
             alarm_reg(0, 1, get_alert_str(3), 3);
             signal_red(ON); signal_buz(MEANDR);
             signal_green(OFF);
-            mode.run = 0;  // Режим оттаивания
+            mode.run = mo_stop;  // Режим оттаивания
             mode.fan = 0;
             if (prim_par.season) mode.pomp = 1;
             TAP_ANGLE = PWM_MAX;
@@ -484,7 +490,7 @@ void event_processing(void) {
             alarm_reg(0, 1, get_alert_str(5), 5);
             signal_red(ON); signal_buz(MEANDR);
             signal_green(OFF);
-            mode.run = 0;  // Режим оттаивания
+            mode.run = mo_stop;  // Режим оттаивания
             mode.fan = 0;
             if (prim_par.season) mode.pomp = 1;
             TAP_ANGLE = PWM_MAX;
@@ -495,7 +501,7 @@ void event_processing(void) {
             alarm_reg(MAX_OFFLINES, termometers[0].err, get_alert_str(7), 7);
             signal_red(ON); signal_buz(MEANDR);
             signal_green(OFF);
-            mode.run = 0;
+            mode.run = mo_stop;
             mode.fan = 0;
             if (prim_par.season) mode.pomp = 1;
             TAP_ANGLE = PWM_MAX;
@@ -506,7 +512,7 @@ void event_processing(void) {
             alarm_reg(MAX_OFFLINES, termometers[1].err, get_alert_str(8), 8);
             signal_red(LONG); signal_buz(MEANDR);
             signal_green(OFF);
-            mode.run = 0;
+            mode.run = mo_stop;
             mode.fan = 0;
             if (prim_par.season) mode.pomp = 1;
             TAP_ANGLE = PWM_MAX;
@@ -523,7 +529,7 @@ void event_processing(void) {
             alarm_reg(MAX_OFFLINES, termometers[3].err, get_alert_str(10), 10);
             signal_red(LONG); signal_buz(MEANDR);
             signal_green(OFF);
-            mode.run = 0;
+            mode.run = mo_stop;
             mode.fan = 0;
             if (prim_par.season) mode.pomp = 1;
             TAP_ANGLE = PWM_MAX;
@@ -543,200 +549,219 @@ void event_processing(void) {
 // Обработка режима работы системы
 void mode_processing(void) {
     // В ЭТОЙ ФУНКЦИИ ЗАПРЕЩЕНО ИЗМЕНЕНИЕ РЕЖИМОВ И ГЕНЕРАЦИЯ СОБЫТИЙ. ТОЛЬКО ПОДДЕРЖКА!
-    int water_out_bound;
-    int water_out_bound_1;
-    static int error_w_stop = 0;
-
     SET_T = prim_par.TA_out_prs;
-    if (mode.run == ENGINEERING) {
-    } else {
-        OCR0 = (unsigned char)TAP_ANGLE;
-        OCR2 = (unsigned char)FAN_SPEED;// Задействованно для включения охладителя
-        //COOLING1 = mode.cooling1;
-        //COOLING2 = mode.cooling2;
-        MOTOR = mode.fan;
-        FAN_VAR = mode.fan;
-        POMP = mode.pomp;
-        POMP_VAR = mode.pomp;
+    // Здесь выставляются значения на лапах контроллера
+    switch (mode.run) {
+        case mo_stop:
+        case mo_warming_up:
+        case mo_warming_down:
+        case mo_action:
+        case mo_to:
+            FAN = mode.fan;
+            POMP = mode.pomp;
+            OCR0 = (unsigned char)TAP_ANGLE;
+            OCR2 = (unsigned char)FAN_SPEED;// Задействованно для включения охладителя
+            FAN_MENU = mode.fan;
+            POMP_MENU = mode.pomp;
+            // COOLING1 = mode.cooling1;
+            // COOLING2 = mode.cooling2;
+            break;
+        case mo_setup_input1:
+            break;
+        case mo_setup_input2:
+            break;
+        case mo_setup_output1:
+            break;
+        case mo_setup_output2:
+            break;
+        default:
 
-        switch (mode.run) {
-            case 0:
-                time_integration = 0;
-                if (prim_par.season) {
-                // Вычисление ограничения закрытия крана TAP_ANGLE = tap_angle_min
-                    if (prim_par.season && (UL_T < TA_IN_NOLIMIT)) {
-                        //int tmp_delta = abs(prim_par.TA_in_Min) + TA_IN_NOLIMIT;
-                        //mode.k_angle_limit = (TAP_ANGLE_LIMIT / tmp_delta) * 1000;
-                        tap_angle_min =prim_par.tap_angle + ((long int)((TA_IN_NOLIMIT - UL_T) * mode.k_angle_limit))/1000;   // вычисление ограничения крана по температуре воздуха на входе и коэффициенту mode.k_angle_limit
-                        if (tap_angle_min < 100) tap_angle_min = 100 ;  // Принудительный запрет закрытия крана меньше 40% в режиме стоп
-                    }
-                    // Процесс поддержания температуры калорифера в режиме СТОП Зимой
-                    error_w_stop = (prim_par.TW_out_Stop - WOUT_T)/100;
-                    water_out_bound = prim_par.TW_out_Stop - 200;
-                    water_out_bound_1 = prim_par.TW_out_Stop - 500;
-                    // Разогрев калорифера
-                    if ((WOUT_T <= water_out_bound) && (timer_fan == 0)) {
-                        timer_fan = TIME_COOL_STOP;
-                        // forcheck_event = ev_pomp;
-                        TAP_ANGLE = TAP_ANGLE + error_w_stop;
-                        if (TAP_ANGLE < tap_angle_min) TAP_ANGLE = tap_angle_min ;   // TAP_ANGLE - Состояние выхода на PWM
-                        if (TAP_ANGLE > PWM_MAX) TAP_ANGLE = PWM_MAX;         // TAP_ANGLE - Состояние выхода на PWM
-                        if (WOUT_T < water_out_bound_1) {
-                            //if (!mode.print) printf("Разогрев калорифера: %d, Угол крана расчетный :%d, Угол крана измеренный :%d, угол ограничения: %d, t обратки :%d  \r\n",  error_w_stop, TAP_ANGLE, ADC_VAR1, tap_angle_min, WOUT_T/10);
-                            // if (mode.print) printf("Разогрев калорифера: %d, Угол крана расчетный :%d, Угол крана измеренный :%d, угол ограничения: %d, t обратки :%d  \r\n",  error_w_stop, TAP_ANGLE, ADC_VAR1, tap_angle_min, WOUT_T/10);
-                            signal_white(LONG);
-                            mode.pomp = 1;
-                        } else {
-                            signal_white(ON);
-                            mode.pomp = 0;
-                        }
-                        if (mode.print) printf("Разогрев калорифера: %d, Угол крана расчетный :%d, Угол крана измеренный :%d, угол ограничения: %d, t обратки :%d  \r\n",  error_w_stop, TAP_ANGLE, ADC_VAR1, tap_angle_min, WOUT_T/10);
-                    }
-                    // Охлаждение калорифера
-                    water_out_bound = prim_par.TW_out_Stop + 250;
-                    water_out_bound_1 = prim_par.TW_out_Stop + 500;
-                    if ((WOUT_T > water_out_bound) && (timer_fan == 0)) {
-                        timer_fan = TIME_COOL_STOP;
-                        // printf("Угол крана расчетный :%d  \r\n",   TAP_ANGLE);
-                        if (TAP_ANGLE < tap_angle_min) TAP_ANGLE = tap_angle_min;         // TAP_ANGLE - Состояние выхода на PWM
-                        if (TAP_ANGLE > PWM_MAX) TAP_ANGLE = PWM_MAX;         // TAP_ANGLE - Состояние выхода на PWM
-                        if ((WOUT_T >= water_out_bound) && (mode.pomp == 1)) {
-                            //if (!mode.print) printf("Охлаждение калорифера: %d, Угол крана расчетный :%d, Угол крана измеренный :%d, угол ограничения: %d, t обратки :%d  \r\n",  error_w_stop, TAP_ANGLE, ADC_VAR1, tap_angle_min, WOUT_T/10);
-                            //if (mode.print) printf("Охлаждение калорифера: %d, Угол крана расчетный :%d, Угол крана измеренный :%d, угол ограничения: %d, t обратки :%d  \r\n",  error_w_stop, TAP_ANGLE, ADC_VAR1, tap_angle_min, WOUT_T/10);
-                            signal_white(ON);
-                            mode.pomp = 0;
-                        };
-                        if (WOUT_T >= water_out_bound_1)  TAP_ANGLE = TAP_ANGLE + error_w_stop;
-                        if (mode.print) printf("Охлаждение калорифера: %d, Угол крана расчетный :%d, Угол крана измеренный :%d, угол ограничения: %d, t обратки :%d  \r\n",  error_w_stop, TAP_ANGLE, ADC_VAR1, tap_angle_min, WOUT_T/10);
-                    }
-                    // Поддержание калорифера
-                    if (timer_fan == 0) {
-                        timer_fan = TIME_COOL_STOP;
-                        if (WIN_T >= prim_par.TW_out_Stop)  mode.pomp = 0;
-                        //if (!mode.print) printf("Поддержание калорифера: %d,  Угол крана расчетный :%d, Угол крана измеренный :%d, угол ограничения: %d, t обратки :%d  \r\n",  error_w_stop, TAP_ANGLE, ADC_VAR1, tap_angle_min, WOUT_T/10);
-                        if (mode.print) printf("Поддержание калорифера: %d,  Угол крана расчетный :%d, Угол крана измеренный :%d, угол ограничения: %d, t обратки :%d  \r\n",  error_w_stop, TAP_ANGLE, ADC_VAR1, tap_angle_min, WOUT_T/10);
-                    }
-                } else {
-                    signal_white(OFF);
-                    mode.pomp = 0;
+    }
+    // Здесь поддерживаем режимы и ведем расчеты
+    switch (mode.run) {
+        case mo_stop:
+            time_integration = 0;
+            if (prim_par.season) {
+                keep_life_in_winter();
+            } else {
+                signal_white(OFF);
+                mode.pomp = 0;
+            }
+            signal_green(OFF);
+            time_cooling = 0;
+            //mode.cooling1 = 0;
+            //mode.cooling2 = 0;
+            break;
+        case mo_action:
+            signal_white(prim_par.season);
+            if (prim_par.season) {
+                winter_regulator();
+            } else {
+                coolant_regulator();
+            }
+            // Без регулятора скорости лапа задействована для охладителя
+            if (1 == 0) {
+                // update_PID(SET_T - POM_T, -5000, 5000); // Разница между T Уст и Т помещения
+                time_integration = prim_par.T_int;
+               //Внимание ОТКЛЮЧЕНО РЕГУЛИРОВАНИЕ СКОРОСТИ ВЕНТИЛЯТОРА!!!
+                if (prim_par.season && (UL_T < TA_IN_NOLIMIT)) {
+                   winter_fan_speed();
                 }
-                signal_green(OFF);
-                time_cooling = 0;
-                //mode.cooling1 = 0;
-                //mode.cooling2 = 0;
-                break;
-            //case 1:
-            //         if (!mode.print) printf("-");
-            //    break;
-            case 3:
-                //if (IS_ALERT == 0) {
-                    if (prim_par.season) {
-                        signal_white(ON);
-                        //  Простой алгоритм обработки
-                        if (time_integration == 0) {
-                            if (POM_T < (SET_T - (prim_par. Kd*10)))  update_P(SET_T - POM_T);// Разница между T Уст и Т помещения
-                            if (POM_T > (SET_T+(prim_par. Kd*10)))  update_P(SET_T - POM_T);// Разница между T Уст и Т помещения
-                            time_integration = prim_par.T_int;
-                            //mode.cooling1 = 0;
-                            //mode.cooling2 = 0;
-                            time_cooling = 0;
-                            signal_green(ON);
-                        }
-                      }
-                    else {
-                        signal_white(OFF);
-                        // Для установок с водяным охладителем !
-                        //Запуск охладителя
-                        if (time_cooling == 0) {
-                            //if (POM_T > (SET_T + (prim_par. Ki*10))) {
-                            if (UL_T > SET_T) {
-                                if (POM_T > SET_T) {
-                                    //if ( mode.cooling1 == 0) {
-                                        //mode.cooling1 = 1;
-                                    //    signal_green(SHORT);
-                                    //} else {
-                                    //     mode.cooling2 = 1;
-                                    //    signal_green(LONG);
-                                   // }
-                                if (mode.print) printf("Включен охладитель.  POM_T :%d\r\n",   POM_T);
-                                }
-                            }
-                        //Остановка охладителя
-                            if (POM_T < (SET_T - (prim_par. Ki*10)) || (UL_T < SET_T) )  {
-                               //if ( mode.cooling1 == 1) {
-                               //     mode.cooling1 = 0;
-                               //     signal_green(SHORT);
-                               // } else {
-                               //     mode.cooling2 = 0;
-                               //     signal_green(ON);
-                               // }
-                            if (mode.print) printf("Отключен охладитель. Разность температур - дельта: %d, POM_T :%d\r\n",  (SET_T - (prim_par. Ki*10)), POM_T);
-                            }
-                            time_cooling = prim_par.T_z;
-                            //time_cooling = TIME_COOLING_MAX;
-                            //mode.cooling1 = 0;
-                            //mode.cooling2 = 0;
-                            //count_cooling = 0;
-                        }
-
-                    }
-
-                    /*
-                    if (1 == 0) {
-                        update_PID(SET_T - POM_T, -5000, 5000); // Разница между T Уст и Т помещения
-                        time_integration = prim_par.T_int;
-
-                        if (!prim_par.season && ){
-                           if ((SET_T+4+ - POM_T
-
-                        }
-                       //Внимание ОТКЛЮЧЕНО РЕГУЛИРОВАНИЕ СКОРОСТИ ВЕНТИЛЯТОРА!!!
-                        if (prim_par.season && (UL_T < TA_IN_NOLIMIT)) {
-                            // Вычисление ограничения закрытия крана TAP_ANGLE = tap_angle_min
-                            //tap_angle_min = ((long int)((TA_IN_NOLIMIT - UL_T) * mode.k_angle_limit))/1000;
-                            //printf("Пересчет ограничения: %d, Ул. т :%d, Коэффициент :%d \r\n",  (TA_IN_NOLIMIT - UL_T), UL_T, mode.k_angle_limit);
-                            // Вычисление скорсти вентилятора
-                            //#define FAN_SPEED_T_UP 300
-                            //#define FAN_SPEED_T_DOWN 100
-                            if ((TAP_ANGLE == PWM_MAX) && ((POM_T - FAN_SPEED_T_DOWN) < SET_T)) {
-                                count_fan++;
-                                if (count_fan == COUNT_FAN_MAX) {
-                                   FAN_SPEED = FAN_SPEED - FAN_SPEED_STEP;
-                                   count_fan = 0;
-                                   if  (FAN_SPEED <= FAN_SPEED_MIN) FAN_SPEED = FAN_SPEED_MIN;
-                                //if (!mode.print) printf("Понижение скорости вентилятора расчетное : %d, измеренное : %d, Счетчик циклов :%d, POM_T :%d \r\n",  FAN_SPEED, ADC_VAR2, count_fan, POM_T);
-                                if (mode.print) printf("Понижение скорости вентилятора расчетное : %d, измеренное : %d, Счетчик циклов :%d, POM_T :%d \r\n",  FAN_SPEED, ADC_VAR2, count_fan, POM_T);
-                                }
-                            } else  {// count_fan = 0;
-                                if ((FAN_SPEED < prim_par.fan_speed) && ((POM_T + FAN_SPEED_T_UP) > SET_T)) {   //&& (TAP_ANGLE == tap_angle_min
-                                    count_fan++;
-                                    if (count_fan == COUNT_FAN_MAX) {
-                                       FAN_SPEED = FAN_SPEED + FAN_SPEED_STEP;
-                                       count_fan = 0;
-                                       //if  (prim_par.fan_speed <= FAN_SPEED) FAN_SPEED = prim_par.fan_speed;
-                                       if  (FAN_SPEED > prim_par.fan_speed ) FAN_SPEED = prim_par.fan_speed;
-                                       //if (!mode.print) printf("Увеличение скорости вентилятора расчетная: %d, измеренная : %d, Счетчик циклов :%d, Заданная скорость :%d \r\n",  FAN_SPEED, ADC_VAR2, count_fan, prim_par.fan_speed);
-                                       if (mode.print) printf("Увеличение скорости вентилятора расчетная: %d, измеренная : %d, Счетчик циклов :%d, Заданная скорость :%d \r\n",  FAN_SPEED, ADC_VAR2, count_fan, prim_par.fan_speed);
-                                    }
-
-                                } else count_fan = 0;
-                            }
-                            //if (!mode.print) printf("Скорость вентилятора расчетная: %d, измеренная : %d, Заданная скорость: %d, POM_T: %d, TAP_ANGLE_MIN = %d \r\n",  FAN_SPEED, ADC_VAR2, prim_par.fan_speed, POM_T, tap_angle_min);
-                            if (mode.print) printf("Скорость вентилятора расчетная: %d, измеренная : %d, Заданная скорость: %d, POM_T: %d, TAP_ANGLE_MIN = %d \r\n",  FAN_SPEED, ADC_VAR2, prim_par.fan_speed, POM_T, tap_angle_min);
-                        }
-
-                    }
-                    */
-                    //signal_green(ON);
+            }
+            //signal_green(ON);
+            break;
+        default:
+            break;
+    };
+}
+// Подпрограмма регулирования охладителя (не зимой)
+void coolant_regulator (void) {
+    if (prim_par.season) return;   // защита от дурака-программиста
+    // Для установок с водяным охладителем !
+    // Запуск охладителя
+    if (time_cooling == 0) {
+        //if (POM_T > (SET_T + (prim_par. Ki*10))) {
+        if (UL_T > SET_T) {
+            if (POM_T > SET_T) {
+                //if ( mode.cooling1 == 0) {
+                //      mode.cooling1 = 1;
+                //      signal_green(SHORT);
+                //} else {
+                //      mode.cooling2 = 1;
+                //      signal_green(LONG);
                 // }
-                break;
-            default:
-                break;
-        };
+                if (mode.print) printf("Включен охладитель.  POM_T :%d\r\n",   POM_T);
+            }
+        }
+        //Остановка охладителя
+        if (POM_T < (SET_T - (prim_par. Ki*10)) || (UL_T < SET_T) )  {
+            //if ( mode.cooling1 == 1) {
+            //     mode.cooling1 = 0;
+            //     signal_green(SHORT);
+            // } else {
+            //     mode.cooling2 = 0;
+            //     signal_green(ON);
+            // }
+            if (mode.print) printf("Отключен охладитель. Разность температур - дельта: %d, POM_T :%d\r\n",  (SET_T - (prim_par. Ki*10)), POM_T);
+        }
+        time_cooling = prim_par.T_z;
+        //time_cooling = TIME_COOLING_MAX;
+        //mode.cooling1 = 0;
+        //mode.cooling2 = 0;
+        //count_cooling = 0;
     }
 }
+// Подпрограмма регулирования скорости вентилятора зимой
+void winter_fan_speed(void) {
+    // Вычисление ограничения закрытия крана TAP_ANGLE = tap_angle_min
+    //tap_angle_min = ((long int)((TA_IN_NOLIMIT - UL_T) * mode.k_angle_limit))/1000;
+    //printf("Пересчет ограничения: %d, Ул. т :%d, Коэффициент :%d \r\n",  (TA_IN_NOLIMIT - UL_T), UL_T, mode.k_angle_limit);
+    // Вычисление скорсти вентилятора
+    //#define FAN_SPEED_T_UP 300
+    //#define FAN_SPEED_T_DOWN 100
+    if ((TAP_ANGLE == PWM_MAX) && ((POM_T - FAN_SPEED_T_DOWN) < SET_T)) {
+        count_fan++;
+        if (count_fan == COUNT_FAN_MAX) {
+           FAN_SPEED = FAN_SPEED - FAN_SPEED_STEP;
+           count_fan = 0;
+           if  (FAN_SPEED <= FAN_SPEED_MIN) FAN_SPEED = FAN_SPEED_MIN;
+        //if (!mode.print) printf("Понижение скорости вентилятора расчетное : %d, измеренное : %d, Счетчик циклов :%d, POM_T :%d \r\n",  FAN_SPEED, ADC_VAR2, count_fan, POM_T);
+        if (mode.print) printf("Понижение скорости вентилятора расчетное : %d, измеренное : %d, Счетчик циклов :%d, POM_T :%d \r\n",  FAN_SPEED, ADC_VAR2, count_fan, POM_T);
+        }
+    } else  {// count_fan = 0;
+        if ((FAN_SPEED < prim_par.fan_speed) && ((POM_T + FAN_SPEED_T_UP) > SET_T)) {   //&& (TAP_ANGLE == tap_angle_min
+            count_fan++;
+            if (count_fan == COUNT_FAN_MAX) {
+               FAN_SPEED = FAN_SPEED + FAN_SPEED_STEP;
+               count_fan = 0;
+               //if  (prim_par.fan_speed <= FAN_SPEED) FAN_SPEED = prim_par.fan_speed;
+               if  (FAN_SPEED > prim_par.fan_speed ) FAN_SPEED = prim_par.fan_speed;
+               //if (!mode.print) printf("Увеличение скорости вентилятора расчетная: %d, измеренная : %d, Счетчик циклов :%d, Заданная скорость :%d \r\n",  FAN_SPEED, ADC_VAR2, count_fan, prim_par.fan_speed);
+               if (mode.print) printf("Увеличение скорости вентилятора расчетная: %d, измеренная : %d, Счетчик циклов :%d, Заданная скорость :%d \r\n",  FAN_SPEED, ADC_VAR2, count_fan, prim_par.fan_speed);
+            }
+
+        } else count_fan = 0;
+    }
+    //if (!mode.print) printf("Скорость вентилятора расчетная: %d, измеренная : %d, Заданная скорость: %d, POM_T: %d, TAP_ANGLE_MIN = %d \r\n",  FAN_SPEED, ADC_VAR2, prim_par.fan_speed, POM_T, tap_angle_min);
+    if (mode.print) printf("Скорость вентилятора расчетная: %d, измеренная : %d, Заданная скорость: %d, POM_T: %d, TAP_ANGLE_MIN = %d \r\n",  FAN_SPEED, ADC_VAR2, prim_par.fan_speed, POM_T, tap_angle_min);
+}
+// Подпрограмма регулирования калорифера зимой
+void winter_regulator (void) {
+    if (!prim_par.season) return;   // защита от дурака-программиста
+    //  Простой алгоритм обработки
+    if (time_integration == 0) {
+        if (POM_T < (SET_T - (prim_par. Kd*10)))  update_P(SET_T - POM_T);// Разница между T Уст и Т помещения
+        if (POM_T > (SET_T+(prim_par. Kd*10)))  update_P(SET_T - POM_T);// Разница между T Уст и Т помещения
+        time_integration = prim_par.T_int;
+        //mode.cooling1 = 0;
+        //mode.cooling2 = 0;
+        time_cooling = 0;
+        signal_green(ON);
+    }
+}
+// Подпрограмма поддержки работоспособности системы зимой в режиме останова
+void keep_life_in_winter(void) {
+    static int error_w_stop = 0;
+    int water_out_bound;
+    int water_out_bound_1;
+
+    if (!prim_par.season) return;   // защита от дурака-программиста
+   // Вычисление ограничения закрытия крана TAP_ANGLE = tap_angle_min
+    if (prim_par.season && (UL_T < TA_IN_NOLIMIT)) {
+        //int tmp_delta = abs(prim_par.TA_in_Min) + TA_IN_NOLIMIT;
+        //mode.k_angle_limit = (TAP_ANGLE_LIMIT / tmp_delta) * 1000;
+        tap_angle_min =prim_par.tap_angle + ((long int)((TA_IN_NOLIMIT - UL_T) * mode.k_angle_limit))/1000;   // вычисление ограничения крана по температуре воздуха на входе и коэффициенту mode.k_angle_limit
+        if (tap_angle_min < 100) tap_angle_min = 100 ;  // Принудительный запрет закрытия крана меньше 40% в режиме стоп
+    }
+    // Процесс поддержания температуры калорифера в режиме СТОП Зимой
+    error_w_stop = (prim_par.TW_out_Stop - WOUT_T)/100;
+    water_out_bound = prim_par.TW_out_Stop - 200;
+    water_out_bound_1 = prim_par.TW_out_Stop - 500;
+    // Разогрев калорифера
+    if ((WOUT_T <= water_out_bound) && (timer_fan == 0)) {
+        timer_fan = TIME_COOL_STOP;
+        // forcheck_event = ev_pomp;
+        TAP_ANGLE = TAP_ANGLE + error_w_stop;
+        if (TAP_ANGLE < tap_angle_min) TAP_ANGLE = tap_angle_min ;   // TAP_ANGLE - Состояние выхода на PWM
+        if (TAP_ANGLE > PWM_MAX) TAP_ANGLE = PWM_MAX;         // TAP_ANGLE - Состояние выхода на PWM
+        if (WOUT_T < water_out_bound_1) {
+            //if (!mode.print) printf("Разогрев калорифера: %d, Угол крана расчетный :%d, Угол крана измеренный :%d, угол ограничения: %d, t обратки :%d  \r\n",  error_w_stop, TAP_ANGLE, ADC_VAR1, tap_angle_min, WOUT_T/10);
+            // if (mode.print) printf("Разогрев калорифера: %d, Угол крана расчетный :%d, Угол крана измеренный :%d, угол ограничения: %d, t обратки :%d  \r\n",  error_w_stop, TAP_ANGLE, ADC_VAR1, tap_angle_min, WOUT_T/10);
+            signal_white(LONG);
+            mode.pomp = 1;
+        } else {
+            signal_white(ON);
+            mode.pomp = 0;
+        }
+        if (mode.print) printf("Разогрев калорифера: %d, Угол крана расчетный :%d, Угол крана измеренный :%d, угол ограничения: %d, t обратки :%d  \r\n",  error_w_stop, TAP_ANGLE, ADC_VAR1, tap_angle_min, WOUT_T/10);
+    }
+    // Охлаждение калорифера
+    water_out_bound = prim_par.TW_out_Stop + 250;
+    water_out_bound_1 = prim_par.TW_out_Stop + 500;
+    if ((WOUT_T > water_out_bound) && (timer_fan == 0)) {
+        timer_fan = TIME_COOL_STOP;
+        // printf("Угол крана расчетный :%d  \r\n",   TAP_ANGLE);
+        if (TAP_ANGLE < tap_angle_min) TAP_ANGLE = tap_angle_min;         // TAP_ANGLE - Состояние выхода на PWM
+        if (TAP_ANGLE > PWM_MAX) TAP_ANGLE = PWM_MAX;         // TAP_ANGLE - Состояние выхода на PWM
+        if ((WOUT_T >= water_out_bound) && (mode.pomp == 1)) {
+            //if (!mode.print) printf("Охлаждение калорифера: %d, Угол крана расчетный :%d, Угол крана измеренный :%d, угол ограничения: %d, t обратки :%d  \r\n",  error_w_stop, TAP_ANGLE, ADC_VAR1, tap_angle_min, WOUT_T/10);
+            //if (mode.print) printf("Охлаждение калорифера: %d, Угол крана расчетный :%d, Угол крана измеренный :%d, угол ограничения: %d, t обратки :%d  \r\n",  error_w_stop, TAP_ANGLE, ADC_VAR1, tap_angle_min, WOUT_T/10);
+            signal_white(ON);
+            mode.pomp = 0;
+        };
+        if (WOUT_T >= water_out_bound_1)  TAP_ANGLE = TAP_ANGLE + error_w_stop;
+        if (mode.print) printf("Охлаждение калорифера: %d, Угол крана расчетный :%d, Угол крана измеренный :%d, угол ограничения: %d, t обратки :%d  \r\n",  error_w_stop, TAP_ANGLE, ADC_VAR1, tap_angle_min, WOUT_T/10);
+    }
+    // Поддержание калорифера
+    if (timer_fan == 0) {
+        timer_fan = TIME_COOL_STOP;
+        if (WIN_T >= prim_par.TW_out_Stop)  mode.pomp = 0;
+        //if (!mode.print) printf("Поддержание калорифера: %d,  Угол крана расчетный :%d, Угол крана измеренный :%d, угол ограничения: %d, t обратки :%d  \r\n",  error_w_stop, TAP_ANGLE, ADC_VAR1, tap_angle_min, WOUT_T/10);
+        if (mode.print) printf("Поддержание калорифера: %d,  Угол крана расчетный :%d, Угол крана измеренный :%d, угол ограничения: %d, t обратки :%d  \r\n",  error_w_stop, TAP_ANGLE, ADC_VAR1, tap_angle_min, WOUT_T/10);
+    }
+}
+// Проверка на принадлежность диапазону
 void check_range(void) {
-    // Проверяем на принадлежность диапазону
     // Аппаратное ограничение закрытия крана по напряжению 2 вольта
     if  ( TAP_ANGLE < prim_par.tap_angle ) TAP_ANGLE = prim_par.tap_angle;
     // Вычисление ограничения закрытия крана TAP_ANGLE = tap_angle_min
@@ -874,10 +899,11 @@ void lcd_primary_screen(void) {
         if (prim_par.alert_status[i] && i != 9) c_alerts++;
     }
     switch (mode.run) {
-        case 0: sprintf(run_mod, "СТОП   "); break; //mode.run=0 ;
-        case 1: sprintf(run_mod, "ПРОГРЕВ"); break; //mode.run=1;
-        case 2: sprintf(run_mod, "ОСТАНОВ"); break; //mode.run=2 ;
-        case 3: sprintf(run_mod, "ПУСК   "); break; //mode.run=3
+        case mo_stop:           sprintf(run_mod, "СТОП   "); break;
+        case mo_warming_up:     sprintf(run_mod, "ПРОГРЕВ"); break;
+        case mo_warming_down:   sprintf(run_mod, "ОСТАНОВ"); break;
+        case mo_action:         sprintf(run_mod, "ПУСК   "); break;
+        case mo_to:             sprintf(run_mod, "ТО     "); break;
         default: break;
     };
     if (c_alerts)

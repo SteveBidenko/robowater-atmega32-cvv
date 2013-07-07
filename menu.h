@@ -23,12 +23,12 @@
 #define TAP_ANGLE parameters[6].val_data
 #define ADC_VAR2 parameters[7].val_data
 #define FAN_SPEED parameters[8].val_data
-#define FAN_VAR parameters[9].val_data
-#define POMP_VAR parameters[10].val_data
+#define FAN_MENU parameters[9].val_data
+#define POMP_MENU parameters[10].val_data
 #define SEASON sdt[5].val_data
 #define SEASON_MAIN main_menu[2].val_data
 #define SETTINGS_OPEN main_menu[6].can_edit
-// #define mode.run main_menu[1].val_data
+#define MAIN_MODE main_menu[1].val_data
 
 // Описание типов
 typedef char lcd_str[LCD_DISP_LENGTH];        // массив из 16 символов для строки LCD
