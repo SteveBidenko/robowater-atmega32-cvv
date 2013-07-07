@@ -70,10 +70,10 @@ interrupt [EXT_INT2] void ext_int2_isr(void) {
     if (timer_start) {
         timer_start--;
         // Если достигли нуля, то включаем вентилятор
-        if (!timer_start && (mode.run == 1)) {         // event = ev_timer_Start;
+        if (!timer_start && (mode.run == mo_warming_up)) {         // event = ev_timer_Start;
              mode.fan = 1;
              printf ("ПУСК \r\n");
-             mode.run=3;                // Включаем режим Пуск
+             mode.run = mo_action;  // Включаем режим Пуск
              count_fan = 0;
              signal_green(ON);
         }
@@ -81,8 +81,8 @@ interrupt [EXT_INT2] void ext_int2_isr(void) {
     if (timer_stop) {
         timer_stop--;
         // Если достигли нуля, то выключаем вентилятор
-        if (!timer_stop && (mode.run == 2)) {          // event = ev_timer_Stop;
-            mode.run = 0;
+        if (!timer_stop && (mode.run == mo_warming_down)) {          // event = ev_timer_Stop;
+            mode.run = mo_stop;
             mode.fan = 0;           // Выключение насоса
             // printf ("Остановили Вентилятор Режим СТОП \r\n");
             signal_green(OFF);
