@@ -37,7 +37,7 @@ enum en_type {
     e_empty = 0,              // Пустой тип. Ничего не добавляем для вывода
     e_clatsman,               // Переключатель (bit) ВКЛ./ВЫКЛ.
     e_winter,                 // Переключатель ЗИМА/ЛЕТО
-    e_isfour,                 // Признак того, что значение принимает одно из 4-х состояний
+    e_mode,                   // Переключатель режимов
     e_percent,                // Процент или PWM или ADC (byte)
     e_temperature,            // Положительное или отрицательное значение температуры умноженное на 100 (int)
     e_room,                   // Задаваемая + температура в помещении умноженное на 100 (int) шагом 0.1
@@ -93,6 +93,7 @@ struct st_array_pos {
 // Описание внешних переменных
 // extern lcd_str linestr;             // Строка для LCD
 extern char linestr[];                // Строка для LCD
+extern int menu_value;                // текущее значение изменяемого в меню параметра
 // extern signed char curr_menu_level1, next_menu_level1;  // Текущий и следующий пункт меню
 extern struct st_parameter main_menu[NUM_MENU];
 extern struct st_parameter parameters[NUM_PARAMETERS];
