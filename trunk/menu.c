@@ -24,7 +24,7 @@ struct st_array_pos dt_curr_menu;             // Здесь сохраняем главное меню во
 //    {1, e_clatsman, "ЗИМА "},              // [9] Режим обогрева (1 - зима, 0 -лето)
 struct st_parameter main_menu[NUM_MENU]= {   // Меню первого уровня
     {-9900, e_temperature, 0, 1},     // [0]
-    {0, e_isfour, 1, 2},              // [1] Основной режим (00 - стоп, 01 - прогрев, 10 - остановка, 11 - пуск)
+    {0, e_mode, 1, 2},                // [1] Задание текущего режима
     {1, e_winter, 0, 3},              // [2] ЗИМА
     {0, e_dt, 1, 4},                  // [3] Установка даты и времени
     {0, e_empty, 1, 5},               // [4] Вход в меню просмотра параметров
@@ -74,14 +74,14 @@ struct st_parameter settings[NUM_SETTINGS]={
     {-1, e_address, 1, 40},         // [14] установка термометра 3
     {3, e_delete, 1, 41},           // [15] Отключение термометра 4
     {-1, e_address, 1, 42},         // [16] установка термометра 4
-    {48, e_PWM1, 1, 43},             // [17] Установка нижней границы выхода1
-    {250, e_PWM1, 1, 44},            // [18] Установка верхней границы выхода1
-    {48, e_ADC1, 1, 45},             // [19] Установка нижней границы входа1
-    {250, e_ADC1, 1, 46},            // [20] Установка верхней границы входа1
-    {48, e_PWM2, 1, 47},             // [21] Установка нижней границы выхода2
-    {250, e_PWM2, 1, 48},            // [22] Установка верхней границы выхода2
-    {48, e_ADC2, 1, 49},             // [23] Установка нижней границы входа2
-    {250, e_ADC2, 1, 50}             // [24] Установка верхней границы входа2
+    {48, e_PWM1, 1, 43},             // [17] Установка нижней границы PWM1
+    {250, e_PWM1, 1, 44},            // [18] Установка верхней границы PWM1
+    {48, e_ADC1, 1, 45},             // [19] Установка нижней границы ADC1
+    {250, e_ADC1, 1, 46},            // [20] Установка верхней границы ADC1
+    {48, e_PWM2, 1, 47},             // [21] Установка нижней границы PWM2
+    {250, e_PWM2, 1, 48},            // [22] Установка верхней границы PWM2
+    {48, e_ADC2, 1, 49},             // [23] Установка нижней границы ADC2
+    {250, e_ADC2, 1, 50}             // [24] Установка верхней границы ADC2
 };
 #define ALERT_POS 61
 struct st_parameter alerts[MAX_ALERTS] = {
@@ -152,6 +152,7 @@ flash lcd_str all_menu_str[] = {
     };
 char linestr[20];           // Строка для LCD
 bit need_eeprom_write;      // Флаг, если необходимо записать в EEPROM
+int menu_value;             // текущее значение настраиваемого параметра
 // Функция синхронизации структуры основных переменных
 void sync_set_par(byte sync) {
     register byte i, j;
@@ -282,7 +283,6 @@ void sync_set_par(byte sync) {
             if (prim_par.ADC2_hi != settings[24].val_data) {
                 prim_par.ADC2_hi = settings[24].val_data; need_eeprom_write = 1;
             }
-
             // Проверяем часть меню, гди идет управление термометрами
             for (i = 0; i < MAX_DS1820; i++) {
                 unsigned char i_set9 = 9 + (int)i * 2;
@@ -387,15 +387,7 @@ char *par_str(struct st_parameter *st_pointer, unsigned char only_val, int pr_da
             break;
         case e_percent:
             // Если указан тип проценты, то печатаем как проценты
-            //printf("LCDLine=%u, dir=%u, line0=%u, line1=%u\r\n", curr_menu.lcd, direction, curr_menu.line0, curr_menu.line1);
-            //if (pr_data <= prim_par.tap_angle ) pr_data = prim_par.tap_angle;
-            //if (pr_data >= PWM_MAX ) pr_data = PWM_MAX;
-
-            // Пробую 16.05.2013
-
-            // sprintf(linestr, "%s%u%%", pr_name, ((pr_data -  prim_par.tap_angle)*100)/(PWM_MAX -  prim_par.tap_angle));
-            //sprintf(linestr, "%s%u%%", pr_name, pr_data);
-            switch ( st_pointer->str_num ) {
+            switch(st_pointer->str_num) {
                 case (18): percent = calc_percent(pr_data, prim_par.ADC1_lo, prim_par.ADC1_hi); break;   // Текущее состояние крана (АЦП1)
                 case (19): percent = calc_percent(pr_data, prim_par.PWM1_lo, prim_par.PWM1_hi); break;   // Заданное состояние крана (PWM1)
                 case (20): percent = calc_percent(pr_data, prim_par.ADC2_lo, prim_par.ADC2_hi); break;   // Текущее состояние вентилятора (АЦП2)
@@ -403,10 +395,6 @@ char *par_str(struct st_parameter *st_pointer, unsigned char only_val, int pr_da
             };
             //sprintf(linestr, "%s%u.%-01u%%", pr_name, abs(percent/10), abs(percent%10));
             sprintf(linestr, "%s%u%%", pr_name, abs(percent/10));
-            //printf("[%d]", st_pointer->str_num);
-            // sprintf(linestr, "%s%u%%", pr_name, pr_data);
-            //printf("[%d]%u", st_pointer->str_num, pr_data);
-            printf("[%d]%u", st_pointer->str_num, FAN_SPEED);
             break;
         // перенес из boiler-control 15.05.2013
         case e_PWM1: // Если указан тип e_PWM или e_ADC, то печатаем как просто число
@@ -448,15 +436,15 @@ char *par_str(struct st_parameter *st_pointer, unsigned char only_val, int pr_da
             // Если указан тип шкалы, то печатаем как знаковый байт (-128..127)
             sprintf(linestr, "%s%d", pr_name, pr_data);
             break;
-        case e_isfour:
+        case e_mode:
             MAIN_MODE = (int)mode.run;
-            // Если указан тип режим, то печатаем со словами (00 - стоп, 01 - прогрев, 10 - остановка, 11 - пуск)
+            // Если указан тип режим, то печатаем со словами
             switch (pr_data) {
-                case 0: sprintf(linestr, "%sСТОП", pr_name);  break;    //mode.run = mo_stop;
-                case 1: sprintf(linestr, "%sПРОГРЕВ", pr_name); break;  //mode.run = mo_warming_up;
-                case 2: sprintf(linestr, "%sОСТАНОВ", pr_name); break;  //mode.run = mo_warming_down;
-                case 3: sprintf(linestr, "%sПУСК", pr_name);  ; break;  //mode.run = mo_action;
-                case 6: sprintf(linestr, "%sТО", pr_name);  ; break;    //mode.run = mo_to;
+                case 0: sprintf(linestr, "%sСТОП   ", pr_name); break;  // mode.run = mo_stop;
+                case 1: sprintf(linestr, "%sПРОГРЕВ", pr_name); break;  // mode.run = mo_warming_up;
+                case 2: sprintf(linestr, "%sОСТАНОВ", pr_name); break;  // mode.run = mo_warming_down;
+                case 3: sprintf(linestr, "%sПУСК   ", pr_name); break;  // mode.run = mo_action;
+                case 6: sprintf(linestr, "%sТО     ", pr_name); break;  // mode.run = mo_to;
                 default: break;
             };
             break;
@@ -697,8 +685,8 @@ void lcd_edit(signed char direction) {
             if (direction) if(curr_menu.val_data) curr_menu.val_data = 0; else curr_menu.val_data = 1;
             // curr_menu.val_data = ~curr_menu.val_data;
             break;
-        case e_isfour:
-            curr_menu.val_data += 3 * direction;
+        case e_mode:
+            curr_menu.val_data += (int)direction * 3;
             if (curr_menu.val_data > 6) curr_menu.val_data = 0;
             if (curr_menu.val_data < 0) curr_menu.val_data = 6;
             break;
@@ -726,7 +714,7 @@ void lcd_edit(signed char direction) {
             if (curr_menu.val_data > 10000) curr_menu.val_data = 500;
             if (curr_menu.val_data < 500) curr_menu.val_data = 10000;
             break;
-            case e_percent:
+        case e_percent:
              // Изменение порцентов идет с шагом +/-1 %
             curr_menu.val_data += direction;
             //  curr_menu.val_data += 3*direction;
@@ -746,21 +734,14 @@ void lcd_edit(signed char direction) {
         case e_PWM1:
             mode.run = mo_setup_output1;
             curr_menu.val_data += direction;
-            if (curr_menu.val_data < 0 ) curr_menu.val_data = 0xFF;
-            if (curr_menu.val_data > 0xFF) curr_menu.val_data = 0;
-            //TAP_ANGLE = curr_menu.val_data;
-            //if (curr_menu.val_data >= prim_par.PWM1_hi) curr_menu.val_data = prim_par.PWM1_hi;
-            //if (curr_menu.val_data <= prim_par.tap_angle) curr_menu.val_data = prim_par.tap_angle;
-            //  if (curr_menu.val_data <= prim_par.PWM1_lo) curr_menu.val_data = prim_par.PWM1_lo;
+            if (curr_menu.val_data < 0 ) curr_menu.val_data = 0;
+            if (curr_menu.val_data > 0xFF) curr_menu.val_data = 0xFF;
             break;
         case e_PWM2:
             mode.run = mo_setup_output2;
             curr_menu.val_data += direction;
-            if (curr_menu.val_data < 0 ) curr_menu.val_data = 0xFF;
-            if (curr_menu.val_data > 0xFF) curr_menu.val_data = 0;
-            //FAN_SPEED = curr_menu.val_data ;
-            //if (curr_menu.val_data >= prim_par.PWM2_hi) curr_menu.val_data = prim_par.PWM2_hi;
-            //if (curr_menu.val_data <= prim_par.PWM2_lo) curr_menu.val_data = prim_par.PWM2_lo;
+            if (curr_menu.val_data < 0 ) curr_menu.val_data = 0;
+            if (curr_menu.val_data > 0xFF) curr_menu.val_data = 0xFF;
             break;
         case e_coef:
             curr_menu.val_data += direction;
@@ -816,6 +797,8 @@ void lcd_edit(signed char direction) {
         default:
             curr_menu.val_data += direction;
     }
+    // Для системы в целом присваиваем только что измененное значение
+    menu_value = curr_menu.val_data;
     // Рисуем две строки.
     lcd_gotoxy(0,0);        // Устанавливаем курсор в позицию 0 строки 1
     lcd_line_menu(par_str(lmenu, 0, lmenu->val_data), 0);

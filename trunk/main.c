@@ -14,7 +14,7 @@
 #include "keys.h"
 // Локальные макроподстановки
 #define MAJOR_VERSION 4
-#define MINOR_VERSION 4
+#define MINOR_VERSION 5
 // #define NODEBUG
 // enum
 // Определение главных структур
@@ -557,12 +557,10 @@ void mode_processing(void) {
         case mo_warming_down:
         case mo_action:
         case mo_to:
-            FAN = mode.fan;
-            POMP = mode.pomp;
             OCR0 = (unsigned char)TAP_ANGLE;
             OCR2 = (unsigned char)FAN_SPEED;// Задействованно для включения охладителя
-            FAN_MENU = mode.fan;
-            POMP_MENU = mode.pomp;
+            FAN = FAN_MENU = mode.fan;
+            POMP = POMP_MENU = mode.pomp;
             // COOLING1 = mode.cooling1;
             // COOLING2 = mode.cooling2;
             break;
@@ -571,8 +569,10 @@ void mode_processing(void) {
         case mo_setup_input2:
             break;
         case mo_setup_output1:
+            OCR0 = menu_value;
             break;
         case mo_setup_output2:
+            OCR2 = menu_value;
             break;
         default:
 
@@ -898,12 +898,13 @@ void lcd_primary_screen(void) {
         // 9-й алерт (отсутствие 3-го термометра) нам не интересен
         if (prim_par.alert_status[i] && i != 9) c_alerts++;
     }
+    // Обратите внимание, что значение режима не должно быть длинее 5-ти символов
     switch (mode.run) {
-        case mo_stop:           sprintf(run_mod, "СТОП   "); break;
-        case mo_warming_up:     sprintf(run_mod, "ПРОГРЕВ"); break;
-        case mo_warming_down:   sprintf(run_mod, "ОСТАНОВ"); break;
-        case mo_action:         sprintf(run_mod, "ПУСК   "); break;
-        case mo_to:             sprintf(run_mod, "ТО     "); break;
+        case mo_stop:           sprintf(run_mod, "СТОП "); break;
+        case mo_warming_up:     sprintf(run_mod, "ПРОГР"); break;
+        case mo_warming_down:   sprintf(run_mod, "ОСТАН"); break;
+        case mo_action:         sprintf(run_mod, "ПУСК "); break;
+        case mo_to:             sprintf(run_mod, "ТО   "); break;
         default: break;
     };
     if (c_alerts)
@@ -920,7 +921,6 @@ void lcd_primary_screen(void) {
     if(ds1820_devices) {
         sign = (lcd_term < 0) ? '-' : '+';
         sprintf(linestr, "t=%c%02u.%01uC %s", sign, abs(lcd_term)/100, (abs(lcd_term)%100)/10, run_mod);
-        // linestr += "panarin";
     } else {
         sprintf(linestr, "Нет термометров");
     }
