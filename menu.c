@@ -81,7 +81,10 @@ struct st_parameter settings[NUM_SETTINGS]={
     {48, e_PWM2, 1, 47},             // [21] Установка нижней границы PWM2
     {250, e_PWM2, 1, 48},            // [22] Установка верхней границы PWM2
     {48, e_ADC2, 1, 49},             // [23] Установка нижней границы ADC2
-    {250, e_ADC2, 1, 50}             // [24] Установка верхней границы ADC2
+    {250, e_ADC2, 1, 50},           // [24] Установка верхней границы ADC2
+    {1, e_weekday, 1, 51},          // [25] Установка дня недели
+    {0, e_hour, 1, 52},             // [26] Установка часа проведения ТО Крана
+    {0, e_minute, 1, 53}            // [27] Установка минуты проведения ТО Крана
 };
 #define ALERT_POS 61
 struct st_parameter alerts[MAX_ALERTS] = {
@@ -148,8 +151,11 @@ flash lcd_str all_menu_str[] = {
         "Вых2.снизу=",      // [46] Установление вых2 напряжение снизу
         "Вых2.сверху=",     // [47] Установление вых2 напряжение снизу
         "Вх2.снизу= ",       // [48] Установление вых2 напряжение снизу
-        "Вх2.сверху="       // [49] Установление вых2 напряжение снизу
-    };
+        "Вх2.сверху=",      // [49] Установление вых2 напряжение снизу
+        "День ТО=",         // [50] День недели ТО
+        "Час ТО=",          // [51] Установка часа проведения ТО Крана
+        "Минут ТО="         // [52] Установка минуты проведения ТО Крана
+};
 char linestr[20];           // Строка для LCD
 bit need_eeprom_write;      // Флаг, если необходимо записать в EEPROM
 int menu_value;             // текущее значение настраиваемого параметра
@@ -177,6 +183,10 @@ void sync_set_par(byte sync) {
         settings[22].val_data = prim_par.PWM2_hi;
         settings[23].val_data = prim_par.ADC2_lo;
         settings[24].val_data = prim_par.ADC2_hi;
+        // ТО крана
+        settings[25].val_data = prim_par.TO.weekday;
+        settings[26].val_data = prim_par.TO.hour;
+        settings[27].val_data = prim_par.TO.minute;
 
         // Здесь будет разрешение/запрет на редактирование в меню
         for (i = 0; i < MAX_DS1820; i++) {
@@ -283,6 +293,15 @@ void sync_set_par(byte sync) {
             if (prim_par.ADC2_hi != settings[24].val_data) {
                 prim_par.ADC2_hi = settings[24].val_data; need_eeprom_write = 1;
             }
+            if (prim_par.TO.weekday != settings[25].val_data) {
+                prim_par.TO.weekday = settings[25].val_data; need_eeprom_write = 1;
+            }
+            if (prim_par.TO.hour != settings[26].val_data) {
+                prim_par.TO.hour = settings[26].val_data; need_eeprom_write = 1;
+            }
+            if (prim_par.TO.minute != settings[27].val_data) {
+                prim_par.TO.minute = settings[27].val_data; need_eeprom_write = 1;
+            }
             // Проверяем часть меню, гди идет управление термометрами
             for (i = 0; i < MAX_DS1820; i++) {
                 unsigned char i_set9 = 9 + (int)i * 2;
@@ -332,8 +351,10 @@ void sync_set_par(byte sync) {
             if (mode.pomp  != parameters[10].val_data) {
                 mode.pomp = parameters[10].val_data;
             };
-            if ((int)mode.run != main_menu[1].val_data) {
-                mode.initrun = (unsigned char)main_menu[1].val_data + 4;
+            // Здесь применяется использование режимов mo_* с привязкой к месту.
+            if ((int)mode.run != MAIN_MODE) {
+                // В режиме mode.initrun прописываем значение такое, чтобы оно выходило за пределы диапазона режимов с тем, чтобы в check_peripheral() сгенерировать нужное событие
+                mode.initrun = (unsigned char)main_menu[1].val_data + INITMODE;
             };
             for (i = 0; i < MAX_ALERTS; i++) {
                 if (prim_par.alert_status[i] && (alerts[i].val_data == 0)) {
@@ -441,10 +462,10 @@ char *par_str(struct st_parameter *st_pointer, unsigned char only_val, int pr_da
             // Если указан тип режим, то печатаем со словами
             switch (pr_data) {
                 case 0: sprintf(linestr, "%sСТОП   ", pr_name); break;  // mode.run = mo_stop;
-                case 1: sprintf(linestr, "%sПРОГРЕВ", pr_name); break;  // mode.run = mo_warming_up;
-                case 2: sprintf(linestr, "%sОСТАНОВ", pr_name); break;  // mode.run = mo_warming_down;
-                case 3: sprintf(linestr, "%sПУСК   ", pr_name); break;  // mode.run = mo_action;
-                case 6: sprintf(linestr, "%sТО     ", pr_name); break;  // mode.run = mo_to;
+                case 1: sprintf(linestr, "%sПУСК   ", pr_name); break;  // mode.run = mo_action;
+                case 2: sprintf(linestr, "%sТО     ", pr_name); break;  // mode.run = mo_to;
+                case 3: sprintf(linestr, "%sПРОГРЕВ", pr_name); break;  // mode.run = mo_warming_up;
+                case 4: sprintf(linestr, "%sОСТАНОВ", pr_name); break;  // mode.run = mo_warming_down;
                 default: break;
             };
             break;
@@ -495,6 +516,7 @@ char *par_str(struct st_parameter *st_pointer, unsigned char only_val, int pr_da
         case e_minute:
         case e_day:
         case e_month:
+        case e_weekday:
             // Если указан тип [часы, минуты, день, месяц], то печатаем как есть
             sprintf(linestr, "%s%u", pr_name, pr_data);
             break;
@@ -686,9 +708,9 @@ void lcd_edit(signed char direction) {
             // curr_menu.val_data = ~curr_menu.val_data;
             break;
         case e_mode:
-            curr_menu.val_data += (int)direction * 3;
-            if (curr_menu.val_data > 6) curr_menu.val_data = 0;
-            if (curr_menu.val_data < 0) curr_menu.val_data = 6;
+            curr_menu.val_data += (int)direction;
+            if (curr_menu.val_data > 2) curr_menu.val_data = 0;
+            if (curr_menu.val_data < 0) curr_menu.val_data = 2;
             break;
         case e_temperature:
             // Изменение температуры идет с шагом +/-0,1 градуса
@@ -784,6 +806,11 @@ void lcd_edit(signed char direction) {
             curr_menu.val_data += direction;
             if (curr_menu.val_data < 11) curr_menu.val_data = 99;
             if (curr_menu.val_data > 99) curr_menu.val_data = 11;
+            break;
+        case e_weekday:             // День недели [0..6]
+            curr_menu.val_data += direction;
+            if (curr_menu.val_data < 0) curr_menu.val_data = 6;
+            if (curr_menu.val_data > 6) curr_menu.val_data = 0;
             break;
         case e_alert:
             if (direction) curr_menu.val_data = 0;

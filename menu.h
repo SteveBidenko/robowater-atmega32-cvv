@@ -5,7 +5,7 @@
 // Определение макроподстановок
 #define NUM_MENU        7
 #define NUM_PARAMETERS  11
-#define NUM_SETTINGS    25
+#define NUM_SETTINGS    28
 #define NUM_DT 7
 
 #define SYNC_TO_MENU 1
@@ -52,6 +52,7 @@ enum en_type {
     e_day,                    // Дни [01..31]
     e_month,                  // Месяцы [01..12]
     e_year,                   // Года [00..99]
+    e_weekday,                // День недели [0..6], 0=Воскресенье, 1=Понедельник, ...
     e_dt,                     // Мнемоника Вр./Дат.
     e_time,                   // Время в формате чч:мм:сс
     e_date,                   // Время в формате dd.mm.yy
