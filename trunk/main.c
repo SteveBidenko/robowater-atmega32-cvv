@@ -12,9 +12,10 @@
 #include "alarm.h"
 #include "signals.h"
 #include "keys.h"
+#include "dayofweek.h"
 // Локальные макроподстановки
 #define MAJOR_VERSION 4
-#define MINOR_VERSION 5
+#define MINOR_VERSION 6
 // #define NODEBUG
 // enum
 // Определение главных структур
@@ -110,12 +111,13 @@ struct st_eeprom_par prim_par={
      {0x28,0x4f,0x4c,0x7e,0x03,0x00,0x00,0xde,0x01}, // 28  4F  4C  7E  3   0   0   DE  1	FF	FC   Вода ВХОД
      {0x28,0x0a,0x3e,0x7e,0x03,0x00,0x00,0xae,0x01}} // 28  A   3E  7E  3   0   0   AE  1   FF	FB   Вода выход
      */
-     {{0xff,0xc2,0x14,0x7e,0x03,0x00,0x00,0xd5,0x01}, // 28  C2  14  7E  3   0   0   D5  1	FF	FE   Помещение
-     {0xff,0xd6,0x3a,0x7e,0x03,0x00,0x00,0x08,0x01}, // 28  D6  3A  7E  3   0   0   8   1	FF	FD   Улица
-     {0xff,0x4f,0x4c,0x7e,0x03,0x00,0x00,0xde,0x01}, // 28  4F  4C  7E  3   0   0   DE  1	FF	FC   Вода ВХОД
-     {0xff,0x0a,0x3e,0x7e,0x03,0x00,0x00,0xae,0x01}} // 28  A   3E  7E  3   0   0   AE  1   FF	FB   Вода выход
-
-
+     {
+       {0xff,0xc2,0x14,0x7e,0x03,0x00,0x00,0xd5,0x01}, // 28  C2  14  7E  3   0   0   D5  1	FF	FE   Помещение
+       {0xff,0xd6,0x3a,0x7e,0x03,0x00,0x00,0x08,0x01}, // 28  D6  3A  7E  3   0   0   8   1	FF	FD   Улица
+       {0xff,0x4f,0x4c,0x7e,0x03,0x00,0x00,0xde,0x01}, // 28  4F  4C  7E  3   0   0   DE  1	FF	FC   Вода ВХОД
+       {0xff,0x0a,0x3e,0x7e,0x03,0x00,0x00,0xae,0x01}  // 28  A   3E  7E  3   0   0   AE  1   FF	FB   Вода выход
+     },
+     {2,9,0,0} //struct st_TO TO; weekday = 2, hour 9 , minute = 0, status = 0;
 };
 unsigned int time_integration=0;
 int tmp_delta;
@@ -140,6 +142,7 @@ void deley_run(void);
 //void update_PID(int error, int iMin, int iMax);
 void init_new_terms(unsigned char);
 void start_screen(unsigned char);
+char high_time_TO(void);        // Функция, проверяющая необходимость проведения ТО
 // Основная программа
 void main(void) {
     // register byte i;
@@ -279,10 +282,25 @@ void check_peripheral(void) {
             (termometers[3].t < prim_par.TW_out_Min)) // Температура воды обратки ниже критической WOUT_T
             event = ev_freezing3;
     }
-    // Проверяем, что из меню была задана команда ПУСК или СТОП
+    // Проверяем, что из меню была задана команда ПУСК, СТОП или ТО
     if (CHECK_EVENT && (mode.initrun)) {
-        mode.initrun -= 4;
-        event = (mode.initrun && (IS_ALERT == 0)) ? ev_start : ev_stop;
+        mode.initrun -= INITMODE;
+        switch (mode.initrun) {
+            case mo_stop:
+                event = (mode.run == mo_to) ? ev_end_to : ev_stop;
+                break;
+            case mo_action:
+                if ((IS_ALERT == 0) && mode.run == mo_stop) {
+                    event = ev_start;
+                }
+                break;
+            case mo_to:
+                if ((IS_ALERT == 0) && mode.run == mo_stop) {
+                    event = ev_begin_to;
+                }
+                break;
+            default:
+        }
         mode.initrun = 0;
     }
     #ifndef NODEBUG
@@ -300,6 +318,7 @@ void event_processing(void) {
     // Также здесь выполняются инициализационные действия для процессов: Вкл./выкл индикатор, запустить бибикалку, нарисовать строку меню и т.п.
     switch (event) {
         case ev_secunda:                // Обрабатываем ежесекундное событие.
+            s_dt.dayofweek = dayofweek(s_dt.cdd, s_dt.cmo, s_dt.cyy);
             MAIN_T = read_term(0);      // Выводим информацию о главном термометре !!!
             POM_T = read_term(0);
             UL_T = read_term(1);
@@ -311,7 +330,14 @@ void event_processing(void) {
                 case 1: lcd_menu(0); break;
                 default: ;
             }
-            event = ev_none;            // Очищаем событие
+            // Если пора проводить ТО, то генерируем событие
+            if (high_time_TO()) {
+                printf ("Пора проводить ТО\n");
+                prim_par.TO.status = 1;
+                event = ev_begin_to;
+            } else {
+                event = ev_none;            // Очищаем событие
+            }
             break;
         case ev_left:                   // printf ("Обрабатываем прокрутку valcoder влево\r\n");
         case ev_right:                  // printf ("Обрабатываем прокрутку valcoder вправо\r\n");
@@ -435,9 +461,23 @@ void event_processing(void) {
                     timer_stop = TIME_STOP;    // Запускаем таймер STOP
                     time_integration = 0;
                     break; // mo_action
+                case mo_to:
+                    printf ("Окончание ТО\n");
+                    timer_start = 0;
+                    time_integration = 0;
+                    prim_par.TO.status = 0;
+                    break; // mo_to
                 default: break;
             }
             mode.fan = 0;  // Выключение Вентилятора
+            event = ev_none;
+            break;
+        case ev_begin_to:
+            if (mode.run == mo_stop) mode.run = mo_to;
+            event = ev_none;
+            break;
+        case ev_end_to:
+            mode.run = mo_stop;
             event = ev_none;
             break;
         case ev_alarm1:   // Пожар, перегрев вентилятора, авария частотника
@@ -469,7 +509,6 @@ void event_processing(void) {
             //signal_green(SHORT);
             mode.run = mo_stop; // Режим оттаивания
             mode.fan = 0;
-
             if (prim_par.season) mode.pomp = 1;
             TAP_ANGLE = PWM_MAX;
             printf ("АВАРИЯ: %s\r\n", get_alert_str(2));
@@ -914,7 +953,7 @@ void lcd_primary_screen(void) {
     }
     lcd_command(LCD_DISP_ON);       // Убираем курсор с LCD
     lcd_gotoxy(0,0);        // Устанавливаем курсор в позицию 0 первой строки
-    sprintf(linestr, "%02u:%02u:%02u %02u.%02u  ", s_dt.cHH, s_dt.cMM, s_dt.cSS, s_dt.cdd, s_dt.cmo);
+    sprintf(linestr, "%02u:%02u:%02u %02u.%02u %01u", s_dt.cHH, s_dt.cMM, s_dt.cSS, s_dt.cdd, s_dt.cmo, s_dt.dayofweek);
     lcd_puts(linestr);
     lcd_gotoxy(0,1);                // Устанавливаем курсор в позицию 0 строки 2
     // Выводим информацию о термометрах
@@ -1168,4 +1207,17 @@ void check_serial(void) {
                 printf("Нажат символ 0x%x\r\n", inbyte);
         };
     }
+}
+// Функция проверяющая условия проведения ТО, и если пора - возвращает ненулевое значение
+char high_time_TO(void) {
+    if (prim_par.TO.weekday == s_dt.dayofweek) {
+        if (prim_par.TO.hour == s_dt.cHH) {
+            if (prim_par.TO.minute == s_dt.cMM) {
+                if (prim_par.TO.status == 0) {
+                    return (1);
+                }
+            }
+        }
+    }
+    return (0);
 }

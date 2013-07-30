@@ -60,6 +60,7 @@
 // Чтение температуры (аргумент - номер термометра начиная с 0)
 #define read_term(num) termometers[num].t
 #define TIM1_COUNT 52767 // 61845
+#define INITMODE 8
 
 // Описание типов переменных
 typedef unsigned char 	byte;	// byte = unsigned char
@@ -85,19 +86,20 @@ enum en_event {
     ev_term1_nf,            // [15] Термометр 1 не найден
     ev_term2_nf,            // [16] Термометр 2 не найден
     ev_term3_nf,            // [17] Термометр 3 не найден
-    ev_term4_nf             // [18] Термометр 4 не найден
-
+    ev_term4_nf,            // [18] Термометр 4 не найден
+    ev_begin_to,            // [19] Пора проводить ТО
+    ev_end_to               // [20] Окончание ТО
 };
 // перенес из boiler-control 15.05.2013
 // Описание режимов работы системы
 enum en_mode {
     mo_stop = 0,            //   0 - остановка в нормальном режиме,
-    mo_warming_up = 1,      //   1 - прогрев перед включением вентилятора,
-    mo_warming_down = 2,    //   2 - охлаждение перед остановкой вентилятора,
-    mo_action = 3,          //   3 - штатный режим с регулированием
-    mo_setup_input1,        //   4 - установка ADC1
-    mo_setup_input2,        //   5 - установка ADC2
-    mo_to,                  //   6 - ТО крана (ADC1 + PWM1)
+    mo_action = 1,          //   1 - штатный режим с регулированием
+    mo_to = 2,              //   2 - ТО крана (ADC1 + PWM1)
+    mo_warming_up = 3,      //   3 - прогрев перед включением вентилятора,
+    mo_warming_down = 4,    //   4 - охлаждение перед остановкой вентилятора,
+    mo_setup_input1,        //   5 - установка ADC1
+    mo_setup_input2,        //   6 - установка ADC2
     mo_setup_output1,       //   7 - настройка PWM1
     mo_setup_output2        //   8 - настройка PWM2,
 };
@@ -105,6 +107,12 @@ enum en_mode {
 struct st_datetime {
     byte cHH, cMM, cSS;         // Текущее время
     byte cyy, cmo, cdd;         // Текущая дата
+    byte dayofweek;             // Текущий день недели (0..6), 0 - воскресенье, 1 - понедельник ...
+};
+// Структура проведения ТО
+struct st_TO {
+    byte weekday, hour, minute;
+    byte status;                // Если ненулевое значение, то ТО сейчас проводится
 };
 // Структура основных переменных в системе
 extern struct st_eeprom_par {
@@ -121,6 +129,7 @@ extern struct st_eeprom_par {
     byte c_alarm;         // Сколько всего зарегистрировано в EEPROM [1]
     byte terms;           // Сколько должно быть термометров в системе
     byte addr[MAX_DS1820][9];  // [36] Найденные терм. (в адресе - 9 байт). Порядковый номер 0 - Помещение, 1 - Улица, 2 - вода вх., 3 - вода выход
+    struct st_TO TO;     // Структура проведения ТО
 } prim_par;
 
 // Структура основных переключателей в системе
