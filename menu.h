@@ -27,6 +27,7 @@
 #define POMP_MENU parameters[10].val_data
 #define SEASON sdt[5].val_data
 #define SEASON_MAIN main_menu[2].val_data
+#define ALARMS_OPEN main_menu[5].can_edit
 #define SETTINGS_OPEN main_menu[6].can_edit
 #define MAIN_MODE main_menu[1].val_data
 
