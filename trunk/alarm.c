@@ -16,7 +16,7 @@ flash alarm_text all_alerts[MAX_ALERTS] = {
         "Т.возд.вых. ",  // [3]
         "Темп.воды вх ", // [4]
         "Т.воды вых.",   // [5]
-        "Нет связи ",    // [6]
+        "Нет ТО ",       // [6]
         "Нет терм.B1 ",  // [7]
         "Нет терм.B2 ",  // [8]
         "Нет терм.B3 ",  // [9]
@@ -65,7 +65,7 @@ signed char alarm_unreg (unsigned char code) {
     // Запись структуры установок (там хранится позиция и номер ALARM)
     eeprom_write_struct ((char *)&prim_par, sizeof(prim_par));
     update_alert_menu ();
-    if (code >= 7 && code <= 10) read_all_terms(INIT_MODE); 
+    if (code >= 7 && code <= 10) read_all_terms(INIT_MODE);
     return;
 }
 // Функция чтения ALARM по номеру из EEPROM

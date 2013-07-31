@@ -120,6 +120,8 @@ struct st_eeprom_par prim_par={
      {2,9,0,0} //struct st_TO TO; weekday = 2, hour 9 , minute = 0, status = 0;
 };
 unsigned int time_integration=0;
+unsigned char timer_start_to = 0;
+unsigned char timer_stop_to = 0;
 int tmp_delta;
 byte tap_angle_min = 0;   // Ограничение крана снизу от температуры
 byte fan_speed = 0;  // Скорость вентилятора
@@ -338,6 +340,29 @@ void event_processing(void) {
             } else {
                 event = ev_none;            // Очищаем событие
             }
+            if (mode.run == mo_to) {
+                if (timer_start_to) {
+                    timer_start_to--;
+                        // Если достигли нуля, то Событие ev_to_nf
+                    if (!timer_start_to && (ADC_VAR1 < prim_par.ADC1_hi)) {
+                        printf ("Закончилось время открытия \n");
+                        event = ev_to_nf;
+                    }
+                }
+                if (timer_stop_to) {
+                    timer_stop_to--;
+                    if (ADC_VAR1 <= (prim_par.ADC1_lo + 5)) {
+                       printf ("Успешное завершение ТО Крана. \n");
+                       event = ev_end_to;
+                    } else {
+                    // Если достигли нуля, то Событие ev_to_nf
+                        if (!timer_stop_to && (ADC_VAR1 > (prim_par.ADC1_lo + 10))) {
+                            printf ("Закончилось время закрытия \n");
+                            event = ev_to_nf;
+                        }
+                    }
+                }
+            }
             break;
         case ev_left:                   // printf ("Обрабатываем прокрутку valcoder влево\r\n");
         case ev_right:                  // printf ("Обрабатываем прокрутку valcoder вправо\r\n");
@@ -462,10 +487,12 @@ void event_processing(void) {
                     time_integration = 0;
                     break; // mo_action
                 case mo_to:
-                    printf ("Окончание ТО\n");
+                    printf ("Принудительное окончание ТО\n");
                     timer_start = 0;
                     time_integration = 0;
                     prim_par.TO.status = 0;
+                    timer_stop_to = 0;
+                    timer_start_to = 0;
                     break; // mo_to
                 default: break;
             }
@@ -473,12 +500,25 @@ void event_processing(void) {
             event = ev_none;
             break;
         case ev_begin_to:
-            if (mode.run == mo_stop) mode.run = mo_to;
+            if (mode.run == mo_stop) {
+                mode.run = mo_to;
+                timer_start_to = T_TO; // Запускаем таймер STRT
+                timer_stop_to = 0;
+                TAP_ANGLE = prim_par.PWM1_hi;
+                printf("ТО КРАНА. Открывание LIMIT = %d, Время на открывание = %d\n", TAP_ANGLE, timer_start_to);
+            }
             event = ev_none;
             break;
+        case ev_to_nf:
+            alarm_reg(0, 1, get_alert_str(6), 6);
+            printf("Невозможно провести ТО КРАНА." );
         case ev_end_to:
+            timer_start_to = 0;
+            timer_stop_to = 0;
             mode.run = mo_stop;
             event = ev_none;
+            prim_par.TO.status = 0;
+            printf("Конец ТО КРАНА." );
             break;
         case ev_alarm1:   // Пожар, перегрев вентилятора, авария частотника
             signal_red(ON); signal_buz(MEANDR);
@@ -595,13 +635,21 @@ void mode_processing(void) {
         case mo_warming_up:
         case mo_warming_down:
         case mo_action:
+           OCR0 = (unsigned char)TAP_ANGLE;
+           OCR2 = (unsigned char)FAN_SPEED;// Задействованно для включения охладителя
+           FAN = FAN_MENU = mode.fan;
+           POMP = POMP_MENU = mode.pomp;
+           // COOLING1 = mode.cooling1;
+           // COOLING2 = mode.cooling2;
+           break;
         case mo_to:
+            if ((timer_stop_to == 0) && (ADC_VAR1 >= (prim_par.ADC1_hi - 10))) {
+               TAP_ANGLE = prim_par.PWM1_lo;
+               timer_start_to = 0;
+               timer_stop_to = T_TO;
+               printf("ТО КРАНА. Закрывание LIMIT = %d, Время на закрывание = %d\n", TAP_ANGLE, timer_stop_to);
+            }
             OCR0 = (unsigned char)TAP_ANGLE;
-            OCR2 = (unsigned char)FAN_SPEED;// Задействованно для включения охладителя
-            FAN = FAN_MENU = mode.fan;
-            POMP = POMP_MENU = mode.pomp;
-            // COOLING1 = mode.cooling1;
-            // COOLING2 = mode.cooling2;
             break;
         case mo_setup_input1:
             break;

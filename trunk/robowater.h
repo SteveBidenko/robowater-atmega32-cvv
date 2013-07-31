@@ -61,6 +61,7 @@
 #define read_term(num) termometers[num].t
 #define TIM1_COUNT 52767 // 61845
 #define INITMODE 8
+#define T_TO 250                     // Время открытия - закрытия крана то
 
 // Описание типов переменных
 typedef unsigned char 	byte;	// byte = unsigned char
@@ -88,7 +89,8 @@ enum en_event {
     ev_term3_nf,            // [17] Термометр 3 не найден
     ev_term4_nf,            // [18] Термометр 4 не найден
     ev_begin_to,            // [19] Пора проводить ТО
-    ev_end_to               // [20] Окончание ТО
+    ev_end_to,              // [20] Окончание ТО
+    ev_to_nf                // [21] Невозможно провести ТО Крана
 };
 // перенес из boiler-control 15.05.2013
 // Описание режимов работы системы

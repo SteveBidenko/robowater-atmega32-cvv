@@ -59,7 +59,6 @@ byte timer_fan = 0;
 byte count_fan = 0;
 int time_cooling = 0;
 unsigned int count_signal = 0;
-
 // Ежесекундное прерывание
 interrupt [EXT_INT2] void ext_int2_isr(void) {
     #ifndef NODEBUG
@@ -72,7 +71,9 @@ interrupt [EXT_INT2] void ext_int2_isr(void) {
         // Если достигли нуля, то включаем вентилятор
         if (!timer_start && (mode.run == mo_warming_up)) {         // event = ev_timer_Start;
              mode.fan = 1;
+    	     #ifndef NODEBUG
              printf ("ПУСК \r\n");
+	         #endif
              mode.run = mo_action;  // Включаем режим Пуск
              count_fan = 0;
              signal_green(ON);
