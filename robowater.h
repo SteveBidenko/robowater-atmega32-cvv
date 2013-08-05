@@ -61,7 +61,7 @@
 #define read_term(num) termometers[num].t
 #define TIM1_COUNT 52767 // 61845
 #define INITMODE 8
-#define T_TO 250                     // Время открытия - закрытия крана то
+#define T_TO 180                  // Время открытия - закрытия крана то
 
 // Описание типов переменных
 typedef unsigned char 	byte;	// byte = unsigned char
