@@ -195,14 +195,16 @@ void sync_set_par(byte sync) {
 
             // Если первый байт адреса содержит 'FF' - то разрешаем установку
             if (*prim_par.addr[i] == 0xFF) {
-                // Включаем Выключаем DEL, и включаем SET
+                // Выключаем DEL и включаем SET
                 settings[i_set9].can_edit = 0;
                 settings[i_set10].can_edit = (mode.new_terms) ? 1 : 0;
             } else {
-                // Включаем Выключаем DEL, и включаем SET
+                // Включаем DEL, и выключаем SET
                 settings[i_set9].can_edit = 1;
                 settings[i_set10].can_edit = 0;
             }
+            // Добавляем проверку на тупизну программы. Если ни один пункт не разрешен на редактирование, то ставим возможность удаления
+            // if (!settings[i_set9].can_edit && !settings[i_set10].can_edit) settings[i_set9].can_edit = 1;
             settings[i_set9].val_data = i;
             settings[i_set10].val_data = -1;
         }
@@ -302,7 +304,7 @@ void sync_set_par(byte sync) {
             if (prim_par.TO.minute != settings[27].val_data) {
                 prim_par.TO.minute = settings[27].val_data; need_eeprom_write = 1;
             }
-            // Проверяем часть меню, гди идет управление термометрами
+            // Проверяем часть меню, где идет управление термометрами
             for (i = 0; i < MAX_DS1820; i++) {
                 unsigned char i_set9 = 9 + (int)i * 2;
                 unsigned char i_set10 = 10 + (int)i * 2;
