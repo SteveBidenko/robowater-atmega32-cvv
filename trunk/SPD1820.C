@@ -111,11 +111,6 @@ void read_all_terms(unsigned char measure_mode) {
         rectification (curr_t, i, measure_mode);
         // delay_ms(10);
     }
-    // Записываем значение температур в соответствующие переменные
-    //POM_T = termometers[0].t;
-    //UL_T = termometers[1].t;
-    //WIN_T = termometers[2].t;
-    //WOUT_T = termometers[3].t;
 }
 unsigned char *ds1820_show_spd() {
     return (char *) &__ds1820_scratch_pad;

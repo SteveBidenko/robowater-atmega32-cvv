@@ -15,7 +15,7 @@
 #include "dayofweek.h"
 // Локальные макроподстановки
 #define MAJOR_VERSION 4
-#define MINOR_VERSION 6
+#define MINOR_VERSION 7
 // #define NODEBUG
 // enum
 // Определение главных структур
@@ -44,6 +44,7 @@ struct st_eeprom_par prim_par={
     1,  // Зима
     0,  // Позиция текущего alarm в EEPROM
     0,   // Сколько всего зарегистрировано в EEPROM
+    {2,9,0,0},  //struct st_TO TO; weekday = 2, hour 9 , minute = 0, status = 0;
     MAX_DS1820, // Сколько должно быть термометров в системе
 
      /*{{0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFE}, // 28	4D	52	7E 	3	0	0	6E	1	FF	FE воздух помещение
@@ -115,9 +116,8 @@ struct st_eeprom_par prim_par={
        {0xff,0xc2,0x14,0x7e,0x03,0x00,0x00,0xd5,0x01}, // 28  C2  14  7E  3   0   0   D5  1	FF	FE   Помещение
        {0xff,0xd6,0x3a,0x7e,0x03,0x00,0x00,0x08,0x01}, // 28  D6  3A  7E  3   0   0   8   1	FF	FD   Улица
        {0xff,0x4f,0x4c,0x7e,0x03,0x00,0x00,0xde,0x01}, // 28  4F  4C  7E  3   0   0   DE  1	FF	FC   Вода ВХОД
-       {0xff,0x0a,0x3e,0x7e,0x03,0x00,0x00,0xae,0x01}  // 28  A   3E  7E  3   0   0   AE  1   FF	FB   Вода выход
-     },
-     {2,9,0,0} //struct st_TO TO; weekday = 2, hour 9 , minute = 0, status = 0;
+       {0xff,0x0a,0x3e,0x7e,0x03,0x00,0x00,0xae,0x01}  // 28  A   3E  7E  3   0   0   AE  1 FF	FB   Вода выход
+     }
 };
 unsigned int time_integration=0;
 unsigned char timer_start_to = 0;
@@ -150,8 +150,7 @@ void main(void) {
     // register byte i;
     byte size_prim_par;
     init();                  // Инициализация всей периферии
-    #asm("sei")             // Global enable interrupts
-    start_screen(0);
+    #asm("sei")             // Global enable interrupts    start_screen(0);
     init_keys();
     // Сохраняем в EEPROM структуру prim_par
     // ppr_par = &prim_par;
@@ -223,7 +222,7 @@ void main(void) {
         printf(" tap_angle_min %u .   Kоэффициент :%d\r\n",  tap_angle_min, mode.k_angle_limit);
     };
     TAP_ANGLE = (TAP_ANGLE < tap_angle_min) ? tap_angle_min : prim_par.tap_angle;
-    printf(" Установка крана %u .   prim_par.tap_angle :%d\r\n",  TAP_ANGLE, prim_par.tap_angle );
+    printf(" Установка крана %u .   prim_par.tap_angle :%d\r\n", TAP_ANGLE, prim_par.tap_angle);
     while(1) {
         // ВНИМАНИЕ! НИЖЕ ДО ОКОНЧАНИЯ ЦИКЛА WHILE КОД НЕ ДОБАВЛЯТЬ!!!
         check_serial();
@@ -1023,12 +1022,11 @@ void print_prim_par(unsigned char *struct_data, unsigned char size) {
     printf("Состояние PRIM_PAR [%d bytes]: ", size);
     for (i=0; i<size; i++) {
         s_byte = *struct_data++;
-        if (i < (size - 36))
+        if (i <= (size - 37))		// 37 - это смещение массива термометров в prim_par от конца
             printf(" %d", s_byte);
         else
             printf("%02X ", s_byte);
         if (i == size - 37) printf("\r\nTERMS: ");
-        //
     }
     printf("\r\n");
 }
