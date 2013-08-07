@@ -17,7 +17,7 @@ void print_scratch_pad (void) {
 }
 */
 // DS1820 devices ROM code storage area, 9 bytes are used for each device (see the w1_search function description in the help)
-byte ds1820_rom_codes[MAX_DS1820][9];
+unsigned char ds1820_rom_codes[MAX_DS1820][ADDR_LEN];
 struct st_terms termometers[MAX_DS1820];  // ћассив значений термометров с их корректировочными параметрами
 // —труктура дл€ хранени€ текущего ќ«” Dallas
 struct __ds1820_scratch_pad_struct __ds1820_scratch_pad;
@@ -262,4 +262,21 @@ signed char ds1820_get_resolution(unsigned char *addr, unsigned char *resolution
     *resolution = __ds1820_scratch_pad.conf;  // ¬овращаем resolution
     // print_scratch_pad();
     return 1;
+}
+// ‘ункци€ поиска адреса термометра (addr) в существующем массиве адресов (matrix). ¬озвращает 0 - если не найдены, ненулевое значение - позици€ терометра в матрице
+unsigned char ds1820_is_exist (unsigned char *addr, unsigned char *matrix) {
+    unsigned char position = 0;
+    register char i, j;
+    unsigned char *current;
+
+    for (i = 0; i < MAX_DS1820; i++) {      // перебираем адреса всех термометров
+        current = matrix + (int)i * ADDR_LEN;    // указатель устанавливаем на текущий адрес в matrix
+        for (j = 0; j < ADDR_LEN; j++) {    // перебираем байты адреса
+            // ≈сли нет совпадени€ байтов addr и current - "вываливаемс€" из цикла
+            if (*(addr + j) - *(current + j)) break;
+            // если мы сейчас в последней позиции
+            if (j == ADDR_LEN - 1) position = i + 1;
+        }
+    }
+    return (position);
 }
