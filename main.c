@@ -142,7 +142,6 @@ void coolant_regulator(void);   // Подпрограмма регулирования охладителя (не зим
 void update_P(int);
 void deley_run(void);
 //void update_PID(int error, int iMin, int iMax);
-void init_new_terms(unsigned char);
 void start_screen(unsigned char);
 char high_time_TO(void);        // Функция, проверяющая необходимость проведения ТО
 // Основная программа
@@ -1030,54 +1029,6 @@ void print_prim_par(unsigned char *struct_data, unsigned char size) {
     }
     printf("\r\n");
 }
-// Функция инициализирующая новые термометры. !!! Надо здесь разбираться.
-void init_new_terms(unsigned char number) {
-    register unsigned char i;
-    unsigned char is_found = 0, is_new = 0;
-    signed char th, tl, index;
-    unsigned char newterms;
-    // Ищем по новой все термометры
-    newterms = w1_search(0xf0, ds1820_rom_codes);
-    delay_ms (DS1820_ALL_DELAY);
-    printallterms(0);
-    // Вычитываем TH, TL. Иными словами вычисляем индекс.
-    for(i = 0; i < newterms; i++) {
-        ds1820_get_alarm(&ds1820_rom_codes[i][0], &tl, &th);
-        index = (th == OUR_SIGNATURE) ? abs(tl) - 2 : -1;
-        // Проверяем на совпадение с number
-        if (!is_found) is_found = (index == number) ? i + 1 : 0;
-        // Проверяем свободность
-        if (!is_new) is_new = (index == -1) ? 0 : i + 1;
-    }
-    #ifndef NODEBUG
-    printf ("Задан N%u (number), нашли N%u (is_found), свободный N%u (is_new)\r\n", number, is_found, is_new);
-    #endif
-    // Если есть, то выходим из функции с соотвествующим сообщением
-    if (is_found) {
-        printf ("Термометр N%u существует по порядковому номеру %u\r\n", number, is_found);
-        return;
-    }
-    // Если нет свободных, выходим с соотвествующим сообщением
-    if (!is_new) {
-        printf ("Свободных термометров нет\r\n");
-        return;
-    }
-    // Если нашли, то прописываем TH, TL
-    tl = -2 - number; i = is_new - 1;
-    #ifndef NODEBUG
-    printf ("Новый TL = %d[%02x] по номеру %u\r\n", tl, tl, i);
-    #endif
-    if (ds1820_set_THTL(ds1820_rom_codes[i], tl, OUR_SIGNATURE)) {
-        printf ("Проинициализировали термометр N%u по порядковому номеру %u\r\n", number, is_new);
-        delay_ms (DS1820_ALL_DELAY);
-        // Запускаем перезагрузку
-        #asm
-            JMP  __RESET
-        #endasm
-    }
-    printf ("Не могу проинициализировать новый термометр N%u\r\n", number);
-    return;
-}
 void ask_turn_off(void) {
     printf("Выключите питание и подключите все оборудование\r\n");
     while(1);
@@ -1215,20 +1166,20 @@ void check_serial(void) {
             case 0x70:                // символ 'p'
                 init_force_term(0xFB); break;
             case 0x30:              // символ '0'
-                printf("Всем найденым термометрам прописываем 0x69 0xFE - Термометр в помещении\r\n");
-                init_new_terms(0);   // Находим непроинициализированные термометры и первому попавшему прописываем 0x69 0xFE
+                i = ds1820_is_exist (prim_par.addr[0], ds1820_rom_codes[0]);
+                printf ("%s термометр найден в позиции %u\r\n", address_to_LCD(prim_par.addr[0]), i);
                 break;
             case 0x31:              // символ '1'
-                printf("Всем найденым термометрам прописываем 0x69 0xFD - Термометр на улице\r\n");
-                init_new_terms(1);
+                i = ds1820_is_exist (prim_par.addr[1], ds1820_rom_codes[0]);
+                printf ("%s термометр найден в позиции %u\r\n", address_to_LCD(prim_par.addr[1]), i);
                 break;
             case 0x32:              // символ '2'
-                printf("Всем найденым термометрам прописываем 0x69 0xFC - Термометр на подаче воды\r\n");
-                init_new_terms(2);
+                i = ds1820_is_exist (prim_par.addr[2], ds1820_rom_codes[0]);
+                printf ("%s термометр найден в позиции %u\r\n", address_to_LCD(prim_par.addr[2]), i);
                 break;
             case 0x33:              // символ '3'
-                printf("Всем найденым термометрам прописываем 0x69 0xFB - Термометр на обратке воды\r\n");
-                init_new_terms(3);
+                i = ds1820_is_exist (prim_par.addr[3], ds1820_rom_codes[0]);
+                printf ("%s термометр найден в позиции %u\r\n", address_to_LCD(prim_par.addr[3]), i);
                 break;
             case 0x3f:              /* Shift + '?'*/
                 set_term(3, 1); break;

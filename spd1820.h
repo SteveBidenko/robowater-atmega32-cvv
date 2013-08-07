@@ -21,6 +21,7 @@
 #define DUTY_MODE 0
 #define NOT_FOUND -9999
 #define NOT_CLEAR -9998
+#define ADDR_LEN 9
 #pragma used+
 // Описание внешних переменных (was cnt_rem,cnt_c,)
 extern struct __ds1820_scratch_pad_struct {
@@ -36,7 +37,7 @@ extern struct st_terms {
     int t_last;          // Предыдущее значение температуры
     unsigned char err;  // Количество невероятных данных
 } termometers[MAX_DS1820];
-extern byte ds1820_rom_codes[MAX_DS1820][9];
+extern unsigned char ds1820_rom_codes[MAX_DS1820][ADDR_LEN];
 // Описание внешних функций
 unsigned char sync_ds1820_eeprom(void);
 void sync_eeprom_ds1820(void);
@@ -55,6 +56,7 @@ signed char ds1820_get_resolution(unsigned char *addr, unsigned char *resolution
 // void print_scratch_pad (void);
 unsigned char *address_to_LCD(unsigned char *);        // преобразование адреса в строку
 unsigned char *ds1820_show_spd();
+unsigned char ds1820_is_exist (unsigned char *addr, unsigned char *matrix);  // поиск адреса термометра в существующем массиве
 #pragma used-
 
 #endif

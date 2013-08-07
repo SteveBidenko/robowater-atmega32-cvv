@@ -197,7 +197,7 @@ void init_uart(void) {
 // Инициализация всех термометров в системе
 void init_terms(void) {
     printf ("Поиск всех термометров на шине 1-Wire. Найдено: ");
-    ds1820_devices = w1_search(0xf0,ds1820_rom_codes);
+    ds1820_devices = w1_search(0xf0, ds1820_rom_codes);
     delay_ms (DS1820_ALL_DELAY);
     printf ("%d штук\r\n", ds1820_devices);
 }
