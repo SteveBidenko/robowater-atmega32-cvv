@@ -14,8 +14,8 @@
 #include "keys.h"
 #include "dayofweek.h"
 // Локальные макроподстановки
-#define MAJOR_VERSION 4
-#define MINOR_VERSION 7
+#define MAJOR_VERSION 5
+#define MINOR_VERSION 0
 // #define NODEBUG
 // enum
 // Определение главных структур
@@ -113,12 +113,13 @@ struct st_eeprom_par prim_par={
      {0x28,0x0a,0x3e,0x7e,0x03,0x00,0x00,0xae,0x01}} // 28  A   3E  7E  3   0   0   AE  1   FF	FB   Вода выход
      */
      {
-       {0xff,0xc2,0x14,0x7e,0x03,0x00,0x00,0xd5,0x01}, // 28  C2  14  7E  3   0   0   D5  1	FF	FE   Помещение
-       {0xff,0xd6,0x3a,0x7e,0x03,0x00,0x00,0x08,0x01}, // 28  D6  3A  7E  3   0   0   8   1	FF	FD   Улица
-       {0xff,0x4f,0x4c,0x7e,0x03,0x00,0x00,0xde,0x01}, // 28  4F  4C  7E  3   0   0   DE  1	FF	FC   Вода ВХОД
-       {0xff,0x0a,0x3e,0x7e,0x03,0x00,0x00,0xae,0x01}  // 28  A   3E  7E  3   0   0   AE  1 FF	FB   Вода выход
+       {0x28,0xc2,0x14,0x7e,0x03,0x00,0x00,0xd5,0x01}, // 28  C2  14  7E  3   0   0   D5  1	FF	FE   Помещение
+       {0x28,0xd6,0x3a,0x7e,0x03,0x00,0x00,0x08,0x01}, // 28  D6  3A  7E  3   0   0   8   1	FF	FD   Улица
+       {0x28,0x4f,0x4c,0x7e,0x03,0x00,0x00,0xde,0x01}, // 28  4F  4C  7E  3   0   0   DE  1	FF	FC   Вода ВХОД
+       {0x28,0x0a,0x3e,0x7e,0x03,0x00,0x00,0xae,0x01}  // 28  A   3E  7E  3   0   0   AE  1 FF	FB   Вода выход
      }
 };
+unsigned char size_prim_par;        // Почти константа. Нужна для функций записи/чтения из/в EEPROM
 unsigned int time_integration=0;
 unsigned char timer_start_to = 0;
 unsigned char timer_stop_to = 0;
@@ -144,55 +145,29 @@ void deley_run(void);
 //void update_PID(int error, int iMin, int iMax);
 void start_screen(unsigned char);
 char high_time_TO(void);        // Функция, проверяющая необходимость проведения ТО
+void full_reset(void);          // функция, востанавливающая все (!) к заводским настройкам
+void factory_reset(void);       // Функция, востанавливающая установки по умолчанию не трогая информацию о термометрах
+void only_new_term_reset(void); // Функция, восстанавливающая натройки из EEPROM и записывающая рассортированые термометры обратно
 // Основная программа
 void main(void) {
     // register byte i;
-    byte size_prim_par;
     init();                  // Инициализация всей периферии
-    #asm("sei")             // Global enable interrupts    start_screen(0);
     init_keys();
     // Сохраняем в EEPROM структуру prim_par
-    // ppr_par = &prim_par;
     size_prim_par = sizeof(prim_par);
     // СБРОС параметров в EEPROM к заводским установкам, если одновременно нажаты клавиши CANCEL + ENTER
     if (!KEY_CANCEL && !KEY_ENTER) {
-        unsigned char term_status;
-
-        start_screen(1);
-        ds1820_devices = MAX_DS1820;
-        // Сихронизация массива термометров с EEPROM
-        term_status = sync_ds1820_eeprom();
-        eeprom_write_struct ((unsigned char *)&prim_par, size_prim_par);
-        // Запускаем таймер инактивности
-        printf("Запись в EEPROM заводских установок.\r\n Неопознанных термометров = %u\r\n", term_status);
+        full_reset();
     } else {
-        unsigned char size_addr = size_prim_par - sizeof(prim_par.addr);
-
-        if (!KEY_CANCEL) {
-            // При нажатой клавише CANCEL записываем установки по умолчанию не трогая информацию о термометрах
-            start_screen(2);
-            ds1820_devices = MAX_DS1820;
-            printf("Запись в EEPROM установок по умолчанию.\r\n");
-            eeprom_write_struct ((unsigned char *)&prim_par, size_addr);
-        }
-        if (!KEY_ENTER) {
-            // При нажатой клавише ENTER записываем массив новых термометров в EEPROM
-            unsigned char term_status;
-
-            start_screen(3);
-            eeprom_read_struct ((char *)&prim_par, size_addr);
-            ds1820_devices = MAX_DS1820;
-            // Сихронизация массива термометров с EEPROM
-            term_status = sync_ds1820_eeprom();
-            printf("Запись в EEPROM %u новых термометров.\r\n", term_status);
-            eeprom_write_struct ((unsigned char *)&prim_par, size_prim_par);
-        }
+        if (!KEY_CANCEL) factory_reset();
+        if (!KEY_ENTER) only_new_term_reset();
     }
-    deley_run();
-    // Восстанавливаем из EEPROM структуру prim_par
+    // deley_run(); временно отключили
+    // Восстанавливаем из EEPROM структуру prim_par со всеми термометрами
     eeprom_read_struct ((char *)&prim_par, size_prim_par);
-    // Выитываем из EEPROM все термометры
+    // Инициализируем все термометры и запускаем на измерение
     read_all_terms(INIT_MODE);
+    #asm("sei")             // Global enable interrupts    start_screen(0);
     // print_all_menu();       // Выведем на отладочную консоль все пункты меню
     sync_set_par(SYNC_TO_MENU); // Синхронизируем меню с глобальными структурами
     update_alert_menu();        // Обновляем меню alerts
@@ -1217,4 +1192,34 @@ char high_time_TO(void) {
         }
     }
     return (0);
+}
+// функция, востанавливающая все (!) к заводским настройкам
+void full_reset(void) {
+    start_screen(1);
+    printf("Запись в EEPROM всех (!) заводских установок.\r\n");
+    // Сихронизация массива термометров с EEPROM
+    eeprom_write_struct ((unsigned char *)&prim_par, size_prim_par);
+}
+// Функция, востанавливающая установки по умолчанию не трогая информацию о термометрах
+void factory_reset(void) {
+    unsigned char size_addr = size_prim_par - sizeof(prim_par.addr);
+
+    // При нажатой клавише CANCEL записываем установки по умолчанию не трогая информацию о термометрах
+    start_screen(2);
+    ds1820_devices = MAX_DS1820;
+    printf("Запись в EEPROM установок по умолчанию.\r\n");
+    eeprom_write_struct ((unsigned char *)&prim_par, size_addr);
+}
+// Функция, восстанавливающая натройки из EEPROM и записывающая рассортированые термометры обратно
+void only_new_term_reset(void) {
+    unsigned char size_addr = size_prim_par - sizeof(prim_par.addr);
+    unsigned char term_status;
+
+    start_screen(3);
+    eeprom_read_struct ((char *)&prim_par, size_addr);
+    ds1820_devices = MAX_DS1820;
+    // Сихронизация массива термометров с EEPROM
+    term_status = sync_ds1820_eeprom();
+    printf("Запись в EEPROM %u новых термометров.\r\n", term_status);
+    eeprom_write_struct ((unsigned char *)&prim_par, size_prim_par);
 }

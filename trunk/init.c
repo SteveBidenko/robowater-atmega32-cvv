@@ -35,7 +35,6 @@ Data Stack size         : 512
    .equ __w1_port=0x18 ;PORTB
    .equ __w1_bit=0
 #endasm
-#include <1wire.h>
 // Standard Input/Output functions
 #include <stdio.h>
 #include <stdlib.h>
@@ -194,13 +193,6 @@ void init_uart(void) {
     UBRRL = (unsigned char)bauddiv;
 	UBRRH = bauddiv >> 8;
 }
-// Инициализация всех термометров в системе
-void init_terms(void) {
-    printf ("Поиск всех термометров на шине 1-Wire. Найдено: ");
-    ds1820_devices = w1_search(0xf0, ds1820_rom_codes);
-    delay_ms (DS1820_ALL_DELAY);
-    printf ("%d штук\r\n", ds1820_devices);
-}
 // Основной инициализационный модуль
 void init(void) {
     // byte tmp_ret; // byte resolution;
@@ -319,8 +311,6 @@ void init(void) {
     // Инициализируем часы реального времени датой разработки этой программы
     mode.stop_sync_dt = 0;      // снимаем флаг запрета синхронизации
     get_cur_dt(FORCE_INIT);                   // (1)
-    // Инициализируем все термометры
-    init_terms();
     // инициализируем дисплей
     lcd_init(LCD_DISP_ON);
     // Инициализируем valcoder

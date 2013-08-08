@@ -1,7 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <delay.h>
-#include <1wire.h>
 #include "robowater.h"
 #include "spd1820.h"
 // #define NODEBUG             // Комментируя эту строку, даем возможность компилятору включить отладочный сервис
@@ -21,6 +20,14 @@ unsigned char ds1820_rom_codes[MAX_DS1820][ADDR_LEN];
 struct st_terms termometers[MAX_DS1820];  // Массив значений термометров с их корректировочными параметрами
 // Структура для хранения текущего ОЗУ Dallas
 struct __ds1820_scratch_pad_struct __ds1820_scratch_pad;
+// Функция ищущая термометры на шине 1Wire
+void search_terms(void) {
+    // Инициализируем все термометры и сваливаем их в кучу
+    printf ("Поиск всех термометров на шине 1-Wire. Найдено: ");
+    delay_ms (DS1820_ALL_DELAY);
+    ds1820_devices = w1_search(0xf0, ds1820_rom_codes);
+    printf ("%d штук\r\n", ds1820_devices);
+}
 // Функция возвращающая из адреса строку для вывода на экран LCD
 unsigned char *address_to_LCD(unsigned char *address) {
     register byte i;
@@ -39,6 +46,7 @@ unsigned char sync_ds1820_eeprom(void) {
     signed char th, tl, get_alarm;
     unsigned char i_ufo = 0; // обнуляем счетчик непроиницилизированных(новых) термометров
 
+    search_terms();
     for (i = 0; i < ds1820_devices; i++) {
         get_alarm = ds1820_get_alarm(&ds1820_rom_codes[i][0], &tl, &th);
         if (get_alarm > 0) {
@@ -93,9 +101,26 @@ void rectification(int unconverted, unsigned char index, unsigned char measure_m
 }
 // Чтение всех Dallas с коррекцией
 void read_all_terms(unsigned char measure_mode) {
-    register byte i;
+    register unsigned char i, j, position;
     // Запись из EEPROM массива адресов термометров в режиме инициализации
     if (measure_mode == INIT_MODE) {
+        unsigned char i_ufo = 0; // обнуляем счетчик непроиницилизированных(новых) термометров
+        search_terms();
+        // Производим инвентаризацию кучи
+        for(i = 0; i < ds1820_devices; i++) {
+            position = ds1820_is_exist (ds1820_rom_codes[i], prim_par.addr[0]);
+            printf ("%01u: %s термометр найден в позиции %u\r\n", i, address_to_LCD(ds1820_rom_codes[i]), position);
+            if (position == 0) { // если нет такого термометра в куче - помещаем в ufo и увеличиваем кол-во неизвестных
+                // Копируем термометр в ufo
+                for (j = 0; j < ADDR_LEN; j++) {
+                    mode.ufo[i_ufo][j] = ds1820_rom_codes[i][j];
+                }
+                i_ufo++;    //  увеличиваем счетчик неизвестных термометров
+            }
+        }
+        // запоминаем кол-во неизвестных термометров
+        mode.new_terms = i_ufo;
+        // После инвентаризации восстанавливаем порядок из EEPROM
         sync_eeprom_ds1820();
         for(i = 0; i < ds1820_devices; i++) {
             ds1820_set_resolution(&ds1820_rom_codes[i][0], MAX_ACCURACY);
