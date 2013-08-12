@@ -25,7 +25,9 @@ void search_terms(void) {
     // Инициализируем все термометры и сваливаем их в кучу
     printf ("Поиск всех термометров на шине 1-Wire. Найдено: ");
     delay_ms (DS1820_ALL_DELAY);
+    #asm("cli")             // Global disable interrupts
     ds1820_devices = w1_search(0xf0, ds1820_rom_codes);
+    #asm("sei")             // Global enable interrupts
     printf ("%d штук\r\n", ds1820_devices);
 }
 // Функция возвращающая из адреса строку для вывода на экран LCD
