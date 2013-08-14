@@ -15,7 +15,7 @@
 #include "dayofweek.h"
 // Локальные макроподстановки
 #define MAJOR_VERSION 5
-#define MINOR_VERSION 0
+#define MINOR_VERSION 1
 // #define NODEBUG
 // enum
 // Определение главных структур
@@ -911,7 +911,7 @@ void printnewterms(void) {
         register byte i;
         unsigned char *address_line;
 
-        printf("Неизвестных термометров(mode.ufo) - %d: ", mode.new_terms);
+        printf("mode.ufo Неизвестных термометров new_terms = %d: ", mode.new_terms);
         for (i = 0; i < mode.new_terms; i++) {
             address_line = address_to_LCD (mode.ufo[i]);
             printf("[ %s ] ", address_line);
@@ -1103,7 +1103,6 @@ void check_serial(void) {
                 break;
             case 0x78:  // символ 'x'
                 toggle_print(); break;
-                // print_curr_menu(); break; // Печатаем текущее меню
             case 0x76: // символ 'v'
                 printallterms(1); break;
             case 0x62: // символ 'b'
@@ -1111,11 +1110,14 @@ void check_serial(void) {
             case 0x65:  // символ 'e'
                 alarm_all_print(); break;
             case 0x64:  // символ 'd'
+                printf ("Проверяем список тревог.\r\n");
                 for (i=0; i < MAX_ALERTS; i++) {
                     if (!(alarm_unreg(i))) {
-                       printf ("Удалили активную тревогу: %s\r\n", get_alert_str(i));
+                       printf (" Удалили активную тревогу: %s\r\n", get_alert_str(i));
                     }
                 }
+                break;
+            case 0x5c:  // символ '\'
                 printf ("Инициализируем все термометры!\r\n");
                 read_all_terms(INIT_MODE);
                 break;

@@ -85,19 +85,12 @@ void rectification(int unconverted, unsigned char index, unsigned char measure_m
     termometers[index].t = unconverted;
     // Здесь реализован механизм подсчета кол-ва раз недоступности термометра
     if (measure_mode == INIT_MODE) {
-        if (unconverted == NOT_FOUND)
-            termometers[index].err = MAX_OFFLINES;
-        else
-            termometers[index].err = 0;
-        termometers[index].t_last = termometers[index].t;
+        termometers[index].err = (unconverted == NOT_FOUND) ? MAX_OFFLINES : 0;
     } else {
-        // Проверяем разницу между предыдущим измерением и текущим
-        if (abs(termometers[index].t - termometers[index].t_last) < DELTA_MAX) {
-            termometers[index].t_last = termometers[index].t;
-            termometers[index].err = 0;
-        } else {
-            termometers[index].t = termometers[index].t_last;
+        if ((unconverted == NOT_FOUND) && (termometers[index].err >= MAX_OFFLINES)) {
             termometers[index].err++;
+        } else {
+            termometers[index].err = 0;
         }
     }
 }
@@ -160,6 +153,7 @@ unsigned char ds1820_select(unsigned char *addr) {
 unsigned char ds1820_read_spd(unsigned char *addr) {
 	unsigned char i, *p;
     unsigned char count = 0, result;
+
     do {
         ds1820_select(addr);                	// Выбираем конкретный Dallas
         w1_write(0xbe);							// Даем команду "Чтение памяти"
@@ -169,10 +163,10 @@ unsigned char ds1820_read_spd(unsigned char *addr) {
             *(p++)=w1_read();
         while (++i<9);
         // Сравнение контрольной суммы на 9-м байте с подсчитанным в ОЗУ. Если все в порядке, возвращаем ненулевое значение
-        result = !w1_dow_crc8(&__ds1820_scratch_pad,9);
+        result = w1_dow_crc8(&__ds1820_scratch_pad,9);
         count++;
-    } while	((result == 0) && (count < 3));
-    return result;
+    } while	(result && (count < 3));
+    return !result;
 }
 // Функция загоняющая ScratchPAD в ОЗУ Dallas (3 байта)
 unsigned char ds1820_write_spd(unsigned char *addr) {
@@ -198,6 +192,7 @@ int ds1820_temperature(unsigned char *addr) {
     unsigned char values[16] = { 0,6,12,19,25,31,38,44,50,56,63,69,75,81,88,94 };
     unsigned char fract;
 	int t10;
+
     if (!ds1820_read_spd(addr)) return NOT_FOUND;         // Если безуспешно, то вовращаем -99.99 градусов
     fract = __ds1820_scratch_pad.temp_lsb & 0xF;           // values[fract] = нашей дробной части
     t10 = __ds1820_scratch_pad.temp_msb;
@@ -205,24 +200,6 @@ int ds1820_temperature(unsigned char *addr) {
     t10 += values[fract];
 	return t10;
 }
-/*
-int ds1820_temperature_debug(unsigned char *addr) {
-    unsigned char values[16] = { 0,6,12,19,25,31,38,44,50,56,63,69,75,81,88,94 };
-    unsigned char fract;
-	int t10;
-    if (!ds1820_read_spd(addr)) return NOT_FOUND;         // Если безуспешно, то вовращаем -99.98 градусов
-    fract = __ds1820_scratch_pad.temp_lsb & 0xF;           // values[fract] = нашей дробной части
-    t10 = __ds1820_scratch_pad.temp_msb;
-	t10 = (t10 << 8) | __ds1820_scratch_pad.temp_lsb;
-    #ifndef NODEBUG
-    printf("{ t10 = %i[%02X]; ", t10, t10);
-    #endif
-    t10 = (t10 >> 4) * 100; printf("t10 = %i[%02X]; ", t10, t10);
-    // t10 = t10 * 100 + values[fract];
-    t10 += values[fract]; printf("%i[%02X]; }", t10, t10);
-	return t10;
-}
-*/
 // Функция, снимающая показания температуры и сразу запускает новые измерения
 int ds1820_temperature_10(unsigned char *addr) {
 	int t10;									// текущее преобразованное значение

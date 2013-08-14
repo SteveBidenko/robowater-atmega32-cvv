@@ -193,14 +193,15 @@ void sync_set_par(byte sync) {
             unsigned char i_set9 = 9 + (int)i * 2;
             unsigned char i_set10 = 10 + (int)i * 2;
 
-            // Если первый байт адреса содержит 'FF' - то разрешаем установку
-            if (*prim_par.addr[i] == 0xFF) {
+            // Если есть ошибки на термометре и есть новые термометры, то разрешаем установку
+            if (termometers[i].err) {
                 // Выключаем DEL и включаем SET
                 settings[i_set9].can_edit = 0;
+				// Если нет термометров, вообще ничего не разрешаем
                 settings[i_set10].can_edit = (mode.new_terms) ? 1 : 0;
             } else {
-                // Включаем DEL, и выключаем SET
-                settings[i_set9].can_edit = 1;
+                // Если нет термометров, вообще ничего не разрешаем
+                settings[i_set9].can_edit = (mode.new_terms) ? 1 : 0;
                 settings[i_set10].can_edit = 0;
             }
             // Добавляем проверку на тупизну программы. Если ни один пункт не разрешен на редактирование, то ставим возможность удаления
@@ -697,7 +698,7 @@ void lcd_edit(signed char direction) {
             break;
         case e_address:
             curr_menu.val_data += (int)direction;
-            if (curr_menu.val_data >= mode.new_terms - 1) curr_menu.val_data = -1;
+            if (curr_menu.val_data > mode.new_terms - 1) curr_menu.val_data = -1;
             if (curr_menu.val_data < -1) curr_menu.val_data = mode.new_terms - 1;
             break;
         case e_delete:

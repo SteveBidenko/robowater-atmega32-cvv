@@ -34,7 +34,6 @@ extern struct __ds1820_scratch_pad_struct {
 extern struct st_terms {
     int t;               // Текущее значение температуры * 100
     unsigned char id;   // Где находится (0 - где-то рядом) ;-)
-    int t_last;          // Предыдущее значение температуры
     unsigned char err;  // Количество невероятных данных
 } termometers[MAX_DS1820];
 extern unsigned char ds1820_rom_codes[MAX_DS1820][ADDR_LEN];
@@ -60,4 +59,3 @@ unsigned char ds1820_is_exist (unsigned char *addr, unsigned char *matrix);  // 
 #pragma used-
 
 #endif
-
