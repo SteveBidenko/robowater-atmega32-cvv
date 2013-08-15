@@ -82,14 +82,7 @@ void init_keys(void) {
 // Функция опроса всех кнопок
 void poll_keys(void) {
     register unsigned char i;
-    #ifndef NODEBUG
-    // printf ("Опрос всех кнопок (NUM_KEYS)\r\n");
-    #endif
-    for (i=0; i<NUM_KEYS; i++) {
-        poll_key(i);    // if keys[i].status
-        //if (key(i) != keys[i].last)
-        // printf("Нажата кнопка #%d\r\n", i);
-    }
+    for (i=0; i<NUM_KEYS; i++) poll_key(i);
 }
 // Опрос конкретной кнопки
 void poll_key(unsigned char i) {

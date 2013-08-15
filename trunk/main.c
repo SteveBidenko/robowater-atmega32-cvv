@@ -1,6 +1,7 @@
 #include <mega32.h>
 #include <stdlib.h>  // for abs
 #include <stdio.h>
+#include <string.h>
 #include <delay.h>
 #include "lcd_4bit.h"
 #include "menu.h"
@@ -37,9 +38,7 @@ struct st_eeprom_par prim_par={
     (int)180, (int)100,
     (int)1500, (int)5000,
     (int)-2000, (int)1000, (int)2200,
-// перенес из boiler-control 15.05.2013
     48, 250, 48, 250, 48, 250, 48, 250,  // Установка границ вольтажа входов и выходов
-
     {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
     1,  // Зима
     0,  // Позиция текущего alarm в EEPROM
@@ -125,7 +124,26 @@ int tmp_delta;
 byte tap_angle_min = 0;   // Ограничение крана снизу от температуры
 byte fan_speed = 0;  // Скорость вентилятора
 enum en_event event;                          // Текущее событие в системе
+#define HELP_LINES 14
+typedef char help_str[70];
+flash help_str all_help_str[HELP_LINES] = {
+"z - общее состояние системы",                                          // [0]
+"s - переключение звука",                                               // [1]
+"w - печать номера текущего события",                                   // [2]
+"x -переключение печати",                                               // [3]
+"v - печать адресов термометров (ds1820_rom_codes)",                    // [4]
+"b - печать адресов не определенных термометров (ufo)",                 // [5]
+"e - печать журнала последних аварий",                                  // [6]
+"d - удаление тревог",                                                  // [7]
+"\\ - ручной поиск новых термометров",                                  // [8]
+"с - печать структуры prim_par",                                        // [9]
+"m - печать текущих параметров системы",                                // [10]
+"n -печать состояния системы",                                          // [11]
+"0..3 - поиск адреса термометра из prim_par.addr в ds1820_rom_codes",   // [12]
+"9 - вывод всей структуры сигналов",                                    // [13]
+};
 // Описание функций
+void print_help();
 void printallterms(unsigned char); void lcd_primary_screen(void);
 void printnewterms(void);
 void print_prim_par(unsigned char *, unsigned char);
@@ -1051,6 +1069,8 @@ void check_serial(void) {
     if (UCSRA & RX_COMPLETE) { // Пришло ли что-нибудь
         inbyte = UDR;
         switch (inbyte) {
+            case 0x68:  /* 'h' */
+                print_help(); break;
             case 0x7A:  /* 'z' */
                 printf("Время: %02u:%02u:%02u, дата:%02u.%02u.%02u, найдено %u термометров\r\n",
                         s_dt.cHH, s_dt.cMM, s_dt.cSS, s_dt.cdd, s_dt.cmo, s_dt.cyy, ds1820_devices);
@@ -1092,8 +1112,6 @@ void check_serial(void) {
                 for(i=0; i<NUM_MENU; i++) printf("%s\t", param_str(i, main_menu));
                 printf("\r\n");
                 break;
-            case 0x4a:              // символ 'j'
-                poll_keys(); break;
             case 0x30:              // символ '0'
                 i = ds1820_is_exist (prim_par.addr[0], ds1820_rom_codes[0]);
                 printf ("%s термометр найден в позиции %u\r\n", address_to_LCD(prim_par.addr[0]), i);
@@ -1157,4 +1175,13 @@ void factory_term_reset(void) {
     eeprom_read_struct ((char *)&prim_par, size_addr);
     printf("Запись в EEPROM адресов заводских термометров.\r\n");
     eeprom_write_struct ((unsigned char *)&prim_par, size_prim_par);
+}
+// Функция печати на экран HELP информации
+void print_help() {
+    static help_str curr_line;
+    register unsigned char i;
+    for (i = 0; i < HELP_LINES; i++) {
+        strcpyf(curr_line, all_help_str[i]);
+        printf("%s\r\n", curr_line);
+    }
 }
