@@ -15,7 +15,7 @@
 #include "dayofweek.h"
 // Локальные макроподстановки
 #define MAJOR_VERSION 5
-#define MINOR_VERSION 1
+#define MINOR_VERSION 2
 // #define NODEBUG
 // enum
 // Определение главных структур
@@ -145,7 +145,7 @@ void start_screen(unsigned char);
 char high_time_TO(void);        // Функция, проверяющая необходимость проведения ТО
 void full_reset(void);          // функция, востанавливающая все (!) к заводским настройкам
 void factory_reset(void);       // Функция, востанавливающая установки по умолчанию не трогая информацию о термометрах
-void only_new_term_reset(void); // Функция, восстанавливающая натройки из EEPROM и записывающая рассортированые термометры обратно
+void factory_term_reset(void);  // Функция, восстанавливающая настройки из EEPROM и записывающая адреса заводских термометров в EEPROM
 // Основная программа
 void main(void) {
     // register byte i;
@@ -159,9 +159,9 @@ void main(void) {
         full_reset();
     } else {
         if (!KEY_CANCEL) factory_reset();
-        if (!KEY_ENTER) only_new_term_reset();
+        if (!KEY_ENTER) factory_term_reset();
     }
-    // deley_run(); временно отключили
+    // delay_run(); временно отключили
     // Восстанавливаем из EEPROM структуру prim_par со всеми термометрами
     eeprom_read_struct ((char *)&prim_par, size_prim_par);
     // Инициализируем все термометры и запускаем на измерение
@@ -1003,46 +1003,6 @@ void print_prim_par(unsigned char *struct_data, unsigned char size) {
     }
     printf("\r\n");
 }
-void ask_turn_off(void) {
-    printf("Выключите питание и подключите все оборудование\r\n");
-    while(1);
-}
-// Установка номера термометра принудительно на 1-й попавшийся.
-void init_force_term(signed char number) {
-    // Описание локальных переменных
-    byte inbyte = 0;
-    // Начало
-    #asm("cli")
-    printf("Отключите все термометры, кроме [%02x] и нажмите клавишу SHIFT-'~'\r\nВыход из режима - выключение питания\r\n", number);
-    do
-        if (UCSRA & RX_COMPLETE) inbyte = UDR;
-    while (inbyte != 0x7E);
-    ds1820_devices = w1_search(0xf0, ds1820_rom_codes);
-    delay_ms (DS1820_ALL_DELAY);
-    printallterms(0);
-    if (!ds1820_devices)
-        printf("Термометры не найдены\r\n");
-    else
-        if (ds1820_set_THTL(ds1820_rom_codes[0], number, OUR_SIGNATURE))
-            printf("Термометр [%02x] успешно проинициализирован\r\n", number);
-        else
-            printf("Не могу проинициализировать новый термометр [%02x]\r\n", number);
-    ask_turn_off();
-    #asm("sei")
-}
-void set_term(signed char number, signed char sign) {
-    if (sign == OUR_SIGNATURE) {
-        if (ds1820_set_THTL(ds1820_rom_codes[number], -2 - number, sign))
-            printf("Термометр [%02x] успешно проинициализирован\r\n", number);
-        else
-            printf("Не могу проинициализировать термометр [%02x]\r\n", number);
-    } else {
-        if (ds1820_set_THTL(ds1820_rom_codes[number], 1, sign))
-            printf("Термометр [%02x] успешно очищен\r\n", number);
-        else
-            printf("Не могу очистить термометр [%02x]\r\n", number);
-    }
-}
 // Переключение звука
 void toggle_sound(void) {
     if (mode.sound)
@@ -1133,16 +1093,7 @@ void check_serial(void) {
                 printf("\r\n");
                 break;
             case 0x4a:              // символ 'j'
-                poll_keys();
-                break;
-            case 0x75:                // символ 'u' Воздух в помещении
-                init_force_term(0xFE); break;
-            case 0x69:                // символ 'i' Воздух на улице
-                init_force_term(0xFD); break;
-            case 0x6F:                // символ 'o' Вода
-                init_force_term(0xFC); break;
-            case 0x70:                // символ 'p'
-                init_force_term(0xFB); break;
+                poll_keys(); break;
             case 0x30:              // символ '0'
                 i = ds1820_is_exist (prim_par.addr[0], ds1820_rom_codes[0]);
                 printf ("%s термометр найден в позиции %u\r\n", address_to_LCD(prim_par.addr[0]), i);
@@ -1159,22 +1110,6 @@ void check_serial(void) {
                 i = ds1820_is_exist (prim_par.addr[3], ds1820_rom_codes[0]);
                 printf ("%s термометр найден в позиции %u\r\n", address_to_LCD(prim_par.addr[3]), i);
                 break;
-            case 0x3f:              /* Shift + '?'*/
-                set_term(3, 1); break;
-            case 0x3e:              /* Shift + '>' */
-                set_term(2, 1); break;
-            case 0x3c:              /* Shift + '<' */
-                set_term(1, 1); break;
-            case 0x4d:              /* Shift + 'M' */
-                set_term(0, 1); break;
-            case 0x22:              /* Shift + '"'*/
-                set_term(3, OUR_SIGNATURE); break;
-            case 0x3a:              /* Shift + ':' */
-                set_term(2, OUR_SIGNATURE); break;
-            case 0x4c:              /* Shift + 'L' */
-                set_term(1, OUR_SIGNATURE); break;
-            case 0x4b:              /* Shift + 'K' */
-                set_term(0, OUR_SIGNATURE); break;
             case 0x39:              // символ '9'
                 signal_printallbytes();
                 break;
@@ -1214,15 +1149,12 @@ void factory_reset(void) {
     eeprom_write_struct ((unsigned char *)&prim_par, size_addr);
 }
 // Функция, восстанавливающая натройки из EEPROM и записывающая рассортированые термометры обратно
-void only_new_term_reset(void) {
+void factory_term_reset(void) {
     unsigned char size_addr = size_prim_par - sizeof(prim_par.addr);
-    unsigned char term_status;
 
     start_screen(3);
+    printf("Вычитываем из EEPROM настройки без адресов термометра\r\n");
     eeprom_read_struct ((char *)&prim_par, size_addr);
-    ds1820_devices = MAX_DS1820;
-    // Сихронизация массива термометров с EEPROM
-    term_status = sync_ds1820_eeprom();
-    printf("Запись в EEPROM %u новых термометров.\r\n", term_status);
+    printf("Запись в EEPROM адресов заводских термометров.\r\n");
     eeprom_write_struct ((unsigned char *)&prim_par, size_prim_par);
 }

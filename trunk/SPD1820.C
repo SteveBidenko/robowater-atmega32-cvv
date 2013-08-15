@@ -42,35 +42,6 @@ unsigned char *address_to_LCD(unsigned char *address) {
     lcd_line[16] = 0;
     return (lcd_line);
 }
-// Функция записи адресов термометра из ds1820_rom_codes в структуру EEPROM, с использованием TH и TL
-unsigned char sync_ds1820_eeprom(void) {
-    unsigned char result = 0, i, j;
-    signed char th, tl, get_alarm;
-    unsigned char i_ufo = 0; // обнуляем счетчик непроиницилизированных(новых) термометров
-
-    search_terms();
-    for (i = 0; i < ds1820_devices; i++) {
-        get_alarm = ds1820_get_alarm(&ds1820_rom_codes[i][0], &tl, &th);
-        if (get_alarm > 0) {
-            // Адрес термометра [i] начинается с нулевой позиции [0]
-            // Если термометр имеет необходимую сигнатуру, то присваеваем значение по смещению. tl
-            // Иначе присваиваем в нулевой элемент (температура в помещении)
-            for (j = 0; j < 9; j++) {
-                // Если термометр имеет "левую" сигнатуру, то переписываем его в массив ufo
-                if (th == OUR_SIGNATURE)
-                    prim_par.addr[abs(tl) - 2][j] = ds1820_rom_codes[i][j];
-                else {
-                    result++;
-                    mode.ufo[i_ufo][j] = ds1820_rom_codes[i][j];
-                }
-            }
-            // Если есть хоть один новый термометр - увеличиваем счетчик
-            if (th != OUR_SIGNATURE) i_ufo++;
-        }
-    }
-    mode.new_terms = i_ufo;
-    return result;
-}
 // Функция чтения адресов термометра из EEPROM в ds1820_rom_codes по порядку
 void sync_eeprom_ds1820(void) {
     register byte i, j;
@@ -215,19 +186,6 @@ int ds1820_temperature_10lh(unsigned char *addr, signed char *temp_low, signed c
     *temp_high = __ds1820_scratch_pad.temp_high;// Возвращаем верхнюю границу Alarm
 	(void) ds1820_run_measure(addr);
 	return t10;
-}
-// Функция установки параметров ТН и ТL выбранного DALLAS
-unsigned char ds1820_set_THTL(unsigned char *addr, signed char temp_low, signed char temp_high) {
-	if (!ds1820_read_spd(addr)) return 0;
-    __ds1820_scratch_pad.temp_low = temp_low;
-    __ds1820_scratch_pad.temp_high = temp_high;
-    if (ds1820_write_spd(addr)==0) return 0;
-	if (!ds1820_read_spd(addr)) return 0;
-	if ((__ds1820_scratch_pad.temp_low!=temp_low) || (__ds1820_scratch_pad.temp_high!=temp_high)) return 0;
-    if (ds1820_select(addr)==0) return 0;
-	w1_write(0x48);                             // Даем команду на запись в ПЗУ
-	delay_ms(15);
-	return w1_init();
 }
 // Функция добавлена 12.03.2010, изменена 10.05.2013
 // Функция, вычитывающая из указанного Dallas temp_high и temp_low
