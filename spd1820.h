@@ -38,7 +38,6 @@ extern struct st_terms {
 } termometers[MAX_DS1820];
 extern unsigned char ds1820_rom_codes[MAX_DS1820][ADDR_LEN];
 // Описание внешних функций
-unsigned char sync_ds1820_eeprom(void);
 void sync_eeprom_ds1820(void);
 void read_all_terms(unsigned char measure_mode);
 unsigned char ds1820_select(unsigned char *addr);
@@ -48,7 +47,6 @@ unsigned char ds1820_run_measure(unsigned char *addr);
 int ds1820_temperature(unsigned char *addr);            // без запуска на измерения
 int ds1820_temperature_10(unsigned char *addr);         // вычитываем температуру и запускаем на измерения
 int ds1820_temperature_10lh(unsigned char *addr, signed char *temp_low, signed char *temp_high);
-unsigned char ds1820_set_THTL(unsigned char *addr, signed char temp_low, signed char temp_high);
 signed char ds1820_get_alarm(unsigned char *addr, signed char *temp_low, signed char *temp_high);
 unsigned char ds1820_set_resolution(unsigned char *addr, unsigned char resolution);
 signed char ds1820_get_resolution(unsigned char *addr, unsigned char *resolution);

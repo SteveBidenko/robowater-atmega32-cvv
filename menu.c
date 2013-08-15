@@ -201,11 +201,11 @@ void sync_set_par(byte sync) {
                 settings[i_set10].can_edit = (mode.new_terms) ? 1 : 0;
             } else {
                 // ≈сли нет термометров, вообще ничего не разрешаем
-                settings[i_set9].can_edit = (mode.new_terms) ? 1 : 0;
+                // settings[i_set9].can_edit = (mode.new_terms) ? 1 : 0;
+                // ¬ариант 2: разрешаем абсолютное удаление из системы
+                settings[i_set9].can_edit = 1;
                 settings[i_set10].can_edit = 0;
             }
-            // ƒобавл€ем проверку на тупизну программы. ≈сли ни один пункт не разрешен на редактирование, то ставим возможность удалени€
-            // if (!settings[i_set9].can_edit && !settings[i_set10].can_edit) settings[i_set9].can_edit = 1;
             settings[i_set9].val_data = i;
             settings[i_set10].val_data = -1;
         }
@@ -314,7 +314,14 @@ void sync_set_par(byte sync) {
 
                 // провер€ем на отрицательность DEL
                 if (val_data_set_9 < 0) {
-                    ds1820_set_THTL(prim_par.addr[i], 0xFF, 0xFF);
+                    // ѕереносим адрес в ufo дл€ последующей прив€зки, если он есть на линии физически
+                    if (termometers[i].err == 0) {
+                        for (j = 0; j < 9; j++) {
+                             mode.ufo[mode.new_terms][j] = ds1820_rom_codes[i][j];
+                        }
+                        mode.new_terms++;
+                    }
+                    // «атираем адрес в prim_par и ds1820_rom_codes
                     ds1820_rom_codes[i][1] = ds1820_rom_codes[i][0] = prim_par.addr[i][0] = 0xFF;
                     // «апрещаем второй раз входить в это меню
                     settings[i_set9].can_edit = 0;
@@ -329,12 +336,10 @@ void sync_set_par(byte sync) {
                     for (j = 0; j < 9; j++) {
                         // ѕереписываем из неизвестных mode.ufo в prim_par.addr и ds1820_rom_codes
                         ds1820_rom_codes[i][j] = prim_par.addr[i][j] = mode.ufo[val_data_set_10][j];
+                        // ѕеремещаем адрес термометра ближе к началу матрицы ufo
                         mode.ufo[val_data_set_10][j] = mode.ufo[mode.new_terms - 1][j];
                     }
                     mode.new_terms--;
-                    // ѕрописываем в TH и TL необходимую сигнатуру
-                    printf("ѕрописываем в TH и TL термометра [%s]\r\n", address_to_LCD (prim_par.addr[i]));
-                    ds1820_set_THTL(prim_par.addr[i], 0xFE - i, OUR_SIGNATURE);
                     need_eeprom_write = 1;
                     settings[i_set9].can_edit = 1;
                     settings[i_set10].can_edit = 0;
