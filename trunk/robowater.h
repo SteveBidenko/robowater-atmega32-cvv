@@ -29,7 +29,6 @@
 #define MAX_DS1820 4
 #define FORCE_INIT 1
 #define ALL_ALERTS 12
-#define TIMER_INACTIVE 60      // Задается в кол-ве полсекундных интервалов
 #define ENTER_CANCEL_OVERFLOW 2      // Задается в кол-ве полсекундных интервалов
 #define TIME_START 180                // Время старта Задается в кол-ве полсекундных интервалов
 #define TIME_STOP 10                 // Время остановки Задается в кол-ве полсекундных интервалов
@@ -155,12 +154,13 @@ extern enum en_event event;        // Текущее событие в системе
 extern void init(void);
 extern void set_cur_dt (void);
 extern void get_cur_dt (unsigned char);
+extern void regular_inspection(void);   // Функция, регулярно запускающая по событию Секунда. Вызов функции - не гарантирован.
+extern unsigned int read_adc(unsigned char adc_input);  // Read the AD conversion result
 // Описание глобальных переменных
 extern struct st_datetime s_dt;
 // extern struct st_menupos menupos;
 extern struct st_mode mode;
 extern unsigned int time_integration;
-extern byte timer1_valcoder;
 extern unsigned int timer_start;
 extern byte timer_stop;
 extern byte timer_fan;

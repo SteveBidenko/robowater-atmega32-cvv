@@ -20,6 +20,7 @@
 // signed char curr_menu_level1 = 0, next_menu_level1 = 1;  // Текущий и следующий пункт меню
 struct st_array_pos curr_menu;                // Позиции в меню
 struct st_array_pos dt_curr_menu;             // Здесь сохраняем главное меню во время входа в меню установки даты и времени
+unsigned char menu_timer_inactive;          // Таймер бездействия меню, по срабатыванию которого выходим из него
 // struct st_array_pos menu_level2;  // Позиции в меню второго уровня
 //    {1, e_clatsman, "ЗИМА "},              // [9] Режим обогрева (1 - зима, 0 -лето)
 struct st_parameter main_menu[NUM_MENU]= {   // Меню первого уровня
