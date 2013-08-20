@@ -30,6 +30,7 @@
 #define ALARMS_OPEN main_menu[5].can_edit
 #define SETTINGS_OPEN main_menu[6].can_edit
 #define MAIN_MODE main_menu[1].val_data
+#define TIMER_INACTIVE 60      // за 60 секунд выходим из меню автоматически
 
 // ќписание типов
 typedef char lcd_str[LCD_DISP_LENGTH];        // массив из 16 символов дл€ строки LCD
@@ -93,6 +94,7 @@ struct st_array_pos {
     unsigned char level;        // текущий уровень меню (0 - главное меню, 1 - второстепенное меню)
 };
 // ќписание внешних переменных
+extern unsigned char menu_timer_inactive;          // “аймер бездействи€ меню, по срабатыванию которого выходим из него
 // extern lcd_str linestr;             // —трока дл€ LCD
 extern char linestr[];                // —трока дл€ LCD
 extern int menu_value;                // текущее значение измен€емого в меню параметра

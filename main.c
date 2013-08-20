@@ -16,7 +16,7 @@
 #include "dayofweek.h"
 // Локальные макроподстановки
 #define MAJOR_VERSION 5
-#define MINOR_VERSION 2
+#define MINOR_VERSION 3
 // #define NODEBUG
 // enum
 // Определение главных структур
@@ -120,6 +120,11 @@ unsigned char size_prim_par;        // Почти константа. Нужна для функций записи
 unsigned int time_integration=0;
 unsigned char timer_start_to = 0;
 unsigned char timer_stop_to = 0;
+unsigned int timer_start = 0;
+unsigned char timer_stop = 0;
+unsigned char timer_fan = 0;
+unsigned char count_fan = 0;
+int time_cooling = 0;
 int tmp_delta;
 byte tap_angle_min = 0;   // Ограничение крана снизу от температуры
 byte fan_speed = 0;  // Скорость вентилятора
@@ -310,55 +315,12 @@ void event_processing(void) {
     // Также здесь выполняются инициализационные действия для процессов: Вкл./выкл индикатор, запустить бибикалку, нарисовать строку меню и т.п.
     switch (event) {
         case ev_secunda:                // Обрабатываем ежесекундное событие.
-            s_dt.dayofweek = dayofweek(s_dt.cdd, s_dt.cmo, s_dt.cyy);
-            MAIN_T = read_term(0);      // Выводим информацию о главном термометре !!!
-            POM_T = read_term(0);
-            UL_T = read_term(1);
-            WIN_T = read_term(2);
-            WOUT_T = read_term(3);
-            switch (mode.menu) {
-                case 0: lcd_primary_screen(); break;
-                // case 2: lcd_edit(0); break;
-                case 1: lcd_menu(0); break;
-                default: ;
-            }
-            // Если пора проводить ТО, то генерируем событие
-            if (high_time_TO()) {
-                printf ("Пора проводить ТО\n");
-                prim_par.TO.status = 1;
-                event = ev_begin_to;
-            } else {
-                event = ev_none;            // Очищаем событие
-            }
-            if (mode.run == mo_to) {
-                if (timer_start_to) {
-                    timer_start_to--;
-                        // Если достигли нуля, то Событие ev_to_nf
-                    if (!timer_start_to && (ADC_VAR1 < prim_par.ADC1_hi)) {
-                        printf ("Закончилось время открытия \n");
-                        event = ev_to_nf;
-                    }
-                }
-                if (timer_stop_to) {
-                    timer_stop_to--;
-                    if (ADC_VAR1 <= (prim_par.ADC1_lo + 5)) {
-                       printf ("Успешное завершение ТО Крана. \n");
-                       event = ev_end_to;
-                    } else {
-                    // Если достигли нуля, то Событие ev_to_nf
-                        if (!timer_stop_to && (ADC_VAR1 > (prim_par.ADC1_lo + 10))) {
-                            printf ("Закончилось время закрытия \n");
-                            event = ev_to_nf;
-                        }
-                    }
-                }
-            }
+            regular_inspection();       // Реализовано отдельной функцией в main.c
             break;
         case ev_left:                   // printf ("Обрабатываем прокрутку valcoder влево\r\n");
         case ev_right:                  // printf ("Обрабатываем прокрутку valcoder вправо\r\n");
             // Запускаем таймер инактивности
-            //timer1_valcoder = TIMER_INACTIVE;
-            timer1_valcoder = TIMER_INACTIVE;
+            menu_timer_inactive = TIMER_INACTIVE;
             valcoder = VALCODER_NO_ROTATE;
             signal_buz(OFF);
             // printf ("Обрабатываем прокрутку valcoder (%d), в режиме %d - ", event-2, mode.menu);
@@ -378,7 +340,7 @@ void event_processing(void) {
             key_treated[2]=1;
             event = ev_none;            // Очищаем событие
             signal_buz(SHORT);
-            timer1_valcoder = TIMER_INACTIVE;     //Запускаем таймер инактивности
+            menu_timer_inactive = TIMER_INACTIVE;     //Запускаем таймер инактивности
             switch (mode.menu) {
                 // lcd_primary_screen();
                 // Обрабатываем нажатие enter c учетом того, что значение mode.menu еще старое
@@ -391,12 +353,12 @@ void event_processing(void) {
             break;
         case ev_timer:
             // Запускаем таймер инактивности
-            if (mode.menu) timer1_valcoder = TIMER_INACTIVE; // TIMER_INACTIVE;
+            if (mode.menu) menu_timer_inactive = TIMER_INACTIVE; // TIMER_INACTIVE;
         case ev_cancel:
             if (event == ev_cancel) {
                 signal_buz(SHORT);
                 key_treated[3]=1;
-                timer1_valcoder = TIMER_INACTIVE;     //Запускаем таймер инактивности ()
+                menu_timer_inactive = TIMER_INACTIVE;     //Запускаем таймер инактивности ()
             }
             event = ev_none;            // Очищаем событие
             // print_prim_par((unsigned char *)&prim_par, sizeof(prim_par));
@@ -1183,5 +1145,101 @@ void print_help() {
     for (i = 0; i < HELP_LINES; i++) {
         strcpyf(curr_line, all_help_str[i]);
         printf("%s\r\n", curr_line);
+    }
+}
+// Функция, вызываемая раз в секунду либо по события, либо по прерыванию
+void regular_inspection(void) {
+    #ifndef NODEBUG
+    // printf ("%02u:%02u Начало прерывания Секунда...", s_dt.cMM, s_dt.cSS);
+    // printf (".");
+    #endif
+    if (timer_fan) timer_fan--;
+    if (timer_start) {
+        timer_start--;
+        // Если достигли нуля, то включаем вентилятор
+        if (!timer_start && (mode.run == mo_warming_up)) {         // event = ev_timer_Start;
+             mode.fan = 1;
+    	     #ifndef NODEBUG
+             printf ("ПУСК \r\n");
+	         #endif
+             mode.run = mo_action;  // Включаем режим Пуск
+             count_fan = 0;
+             signal_green(ON);
+        }
+    }
+    if (timer_stop) {
+        timer_stop--;
+        // Если достигли нуля, то выключаем вентилятор
+        if (!timer_stop && (mode.run == mo_warming_down)) {          // event = ev_timer_Stop;
+            mode.run = mo_stop;
+            mode.fan = 0;           // Выключение насоса
+            // printf ("Остановили Вентилятор Режим СТОП \r\n");
+            signal_green(OFF);
+        }
+    }
+     // Пока timer1_counter > 0, уменьшаем его значение
+    if (menu_timer_inactive) {
+        menu_timer_inactive--;
+        // Если достигли нуля, то останавливаем обслуживание valcoder
+        if (!menu_timer_inactive) {
+            if (event)
+                menu_timer_inactive++;
+            else
+                event = ev_timer;
+            // clatsman.valcoder_mode = 0; lcd_clrscr();
+        }
+    }
+    if (!mode.stop_sync_dt) get_cur_dt (0);
+    read_all_terms(DUTY_MODE);
+    // Вычитаваем АЦП
+    ADC_VAR2 = read_adc(0)/4;
+    ADC_VAR1 = read_adc(1)/4;
+    if (time_integration) time_integration--;
+    if (time_cooling ) time_cooling-- ;
+    #ifndef NODEBUG
+    // printf ("конец в %02u:%02u\r\n", s_dt.cMM, s_dt.cSS);
+    #endif
+    s_dt.dayofweek = dayofweek(s_dt.cdd, s_dt.cmo, s_dt.cyy);
+    MAIN_T = read_term(0);      // Выводим информацию о главном термометре !!!
+    POM_T = read_term(0);
+    UL_T = read_term(1);
+    WIN_T = read_term(2);
+    WOUT_T = read_term(3);
+    switch (mode.menu) {
+        case 0: lcd_primary_screen(); break;
+        // case 2: lcd_edit(0); break;
+        case 1: lcd_menu(0); break;
+        default: ;
+    }
+    // Если пора проводить ТО, то генерируем событие ev_begin_to
+    if (high_time_TO()) {
+        printf ("Пора проводить ТО\n");
+        prim_par.TO.status = 1;
+        event = ev_begin_to;
+    } else {
+        event = ev_none;            // Очищаем событие
+    }
+    if (mode.run == mo_to) {
+        if (timer_start_to) {
+            timer_start_to--;
+                // Если достигли нуля, то Событие ev_to_nf
+            if (!timer_start_to && (ADC_VAR1 < prim_par.ADC1_hi)) {
+                printf ("Закончилось время открытия \n");
+                event = ev_to_nf;
+            }
+        }
+        if (timer_stop_to) {
+            timer_stop_to--;
+            if (ADC_VAR1 <= (prim_par.ADC1_lo + 5)) {
+               printf ("Успешное завершение ТО Крана. \n");
+               event = ev_end_to;
+            } else {
+            // Если достигли нуля, то Событие ev_to_nf
+                if (!timer_stop_to && (ADC_VAR1 > (prim_par.ADC1_lo + 10))) {
+                    printf ("Закончилось время закрытия \n");
+                    event = ev_to_nf;
+                }
+            }
+        }
     }
 }

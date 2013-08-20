@@ -50,66 +50,9 @@ Data Stack size         : 512
 #define NODEBUG
 // Описание локальных функций
 unsigned int read_adc(unsigned char);
-// Переменная timer1
-byte timer1_valcoder = 0;
-unsigned int timer_start = 0;
-byte timer_stop = 0;
-byte timer_fan = 0;
-byte count_fan = 0;
-int time_cooling = 0;
 unsigned int count_signal = 0;
 // Ежесекундное прерывание
 interrupt [EXT_INT2] void ext_int2_isr(void) {
-    #ifndef NODEBUG
-    // printf ("%02u:%02u Начало прерывания Секунда...", s_dt.cMM, s_dt.cSS);
-    // printf (".");
-    #endif
-    if (timer_fan) timer_fan--;
-    if (timer_start) {
-        timer_start--;
-        // Если достигли нуля, то включаем вентилятор
-        if (!timer_start && (mode.run == mo_warming_up)) {         // event = ev_timer_Start;
-             mode.fan = 1;
-    	     #ifndef NODEBUG
-             printf ("ПУСК \r\n");
-	         #endif
-             mode.run = mo_action;  // Включаем режим Пуск
-             count_fan = 0;
-             signal_green(ON);
-        }
-    }
-    if (timer_stop) {
-        timer_stop--;
-        // Если достигли нуля, то выключаем вентилятор
-        if (!timer_stop && (mode.run == mo_warming_down)) {          // event = ev_timer_Stop;
-            mode.run = mo_stop;
-            mode.fan = 0;           // Выключение насоса
-            // printf ("Остановили Вентилятор Режим СТОП \r\n");
-            signal_green(OFF);
-        }
-    }
-     // Пока timer1_counter > 0, уменьшаем его значение
-    if (timer1_valcoder) {
-        timer1_valcoder--;
-        // Если достигли нуля, то останавливаем обслуживание valcoder
-        if (!timer1_valcoder) {
-            if (event)
-                timer1_valcoder++;
-            else
-                event = ev_timer;
-            // clatsman.valcoder_mode = 0; lcd_clrscr();
-        }
-    }
-    if (!mode.stop_sync_dt) get_cur_dt (0);
-    read_all_terms(DUTY_MODE);
-    // Вычитаваем АЦП
-    ADC_VAR2 = read_adc(0)/4;
-    ADC_VAR1 = read_adc(1)/4;
-    if (time_integration) time_integration--;
-    if (time_cooling ) time_cooling-- ;
-    #ifndef NODEBUG
-    // printf ("конец в %02u:%02u\r\n", s_dt.cMM, s_dt.cSS);
-    #endif
     if CHECK_EVENT {
         event = ev_secunda;
         #ifndef NODEBUG
@@ -145,7 +88,6 @@ interrupt [TIM1_OVF] void timer1_ovf_isr(void) {
 interrupt [TIM2_OVF] void timer2_ovf_isr(void) {
 // Нельзя использовать. Задействовано для PWM
 }
-
 #define ADC_VREF_TYPE 0xC0
 // Read the AD conversion result
 unsigned int read_adc(unsigned char adc_input) {
