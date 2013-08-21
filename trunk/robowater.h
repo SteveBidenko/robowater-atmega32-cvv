@@ -158,15 +158,6 @@ extern void regular_inspection(void);   // ‘ункци€, регул€рно запускающа€ по соб
 extern unsigned int read_adc(unsigned char adc_input);  // Read the AD conversion result
 // ќписание глобальных переменных
 extern struct st_datetime s_dt;
-// extern struct st_menupos menupos;
 extern struct st_mode mode;
-extern unsigned int time_integration;
-extern unsigned int timer_start;
-extern byte timer_stop;
-extern byte timer_fan;
-extern byte count_fan;
-extern int time_cooling;
 extern unsigned int count_signal;
-//extern byte fan_speed;
-// extern unsigned char key_treated[7] = {0, 0, 0, 0, 0, 0, 0};
 #endif
