@@ -154,8 +154,9 @@ extern enum en_event event;        // Текущее событие в системе
 extern void init(void);
 extern void set_cur_dt (void);
 extern void get_cur_dt (unsigned char);
-extern void regular_inspection(void);   // Функция, регулярно запускающая по событию Секунда. Вызов функции - не гарантирован.
 extern unsigned int read_adc(unsigned char adc_input);  // Read the AD conversion result
+void update_P(int);
+//void update_PID(int error, int iMin, int iMax);
 // Описание глобальных переменных
 extern struct st_datetime s_dt;
 extern struct st_mode mode;
