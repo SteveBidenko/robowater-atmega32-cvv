@@ -28,7 +28,7 @@
 // maximum number of DS1820 devices connected to the 1 Wire bus
 #define MAX_DS1820 4
 #define FORCE_INIT 1
-#define ALL_ALERTS 12
+#define ALL_WARNINGS 12
 #define ENTER_CANCEL_OVERFLOW 2      // Задается в кол-ве полсекундных интервалов
 #define TIME_START 180                // Время старта Задается в кол-ве полсекундных интервалов
 #define TIME_STOP 10                 // Время остановки Задается в кол-ве полсекундных интервалов
@@ -124,7 +124,7 @@ extern struct st_eeprom_par {
     int TA_in_Min, TA_out_Min, TA_out_prs;    //-1500, 1000, 2200   [10]
     // перенес из boiler-control 15.05.2013
     byte PWM1_lo, PWM1_hi, ADC1_lo, ADC1_hi, PWM2_lo, PWM2_hi, ADC2_lo, ADC2_hi;    // Установка границ вольтажа входа и выхода
-    byte alert_status[ALL_ALERTS];           // 0) Тревога (0 - нет тревоги, > 0 - количество необработанных тревог) [12]
+    byte warning_status[ALL_WARNINGS];           // 0) Тревога (0 - нет тревоги, > 0 - количество необработанных тревог) [12]
     byte season;          // Сезон года (?)      [1]
     byte alarm;           // Позиция текущего alarm в EEPROM [1]
     byte c_alarm;         // Сколько всего зарегистрировано в EEPROM [1]
@@ -155,7 +155,7 @@ extern void init(void);
 extern void set_cur_dt (void);
 extern void get_cur_dt (unsigned char);
 extern unsigned int read_adc(unsigned char adc_input);  // Read the AD conversion result
-void update_P(int);
+extern void update_P(int);
 //void update_PID(int error, int iMin, int iMax);
 // Описание глобальных переменных
 extern struct st_datetime s_dt;

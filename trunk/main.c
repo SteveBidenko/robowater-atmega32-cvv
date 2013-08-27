@@ -18,7 +18,7 @@
 #include "season.h"
 // Локальные макроподстановки
 #define MAJOR_VERSION 5
-#define MINOR_VERSION 4
+#define MINOR_VERSION 5
 // #define NODEBUG
 // enum
 // Определение главных структур
@@ -180,7 +180,7 @@ void main(void) {
     start_screen(0);
     // print_all_menu();       // Выведем на отладочную консоль все пункты меню
     sync_set_par(SYNC_TO_MENU); // Синхронизируем меню с глобальными структурами
-    update_alert_menu();        // Обновляем меню alerts
+    update_warning_menu();        // Обновляем меню warnings
     //printf("После чтение из EEPROM значение Tw2=%u\r\n", prim_par.Tw2);
     // printf("Было %u, стало после чтение из EEPROM size=%u\r\n", sizeof(prim_par), size_prim_par);
     #ifndef NODEBUG
@@ -235,35 +235,35 @@ void check_peripheral(void) {
     //if (CHECK_EVENT && (!timer_stop) && (!KEY_STOP)) event = ev_stop;
     if (CHECK_EVENT &&  (!KEY_STOP)) event = ev_stop;
     // Обслуживаем кнопку старт, Проверяя при этом наличие каких-либо аварий
-    if (CHECK_EVENT && (IS_ALERT == 0) && (!KEY_START)) event = ev_start;
+    if (CHECK_EVENT && (IS_ALARM == 0) && (!KEY_START)) event = ev_start;
     // Для более "живой" клавиатуры выходим, если событие сгенерировано
     // Проверка свитчиков
-    if (CHECK_EVENT && (!prim_par.alert_status[0]) && (KEY_ALARM1)) event = ev_alarm1; // Пожар, перегрев вентилятора, авария частотника
-    if (CHECK_EVENT && (!prim_par.alert_status[1]) && (KEY_ALARM2)) event = ev_alarm2; // Угроза замораживания от внешнего датчика
-    if (CHECK_EVENT && (!prim_par.alert_status[11]) && (!KEY_FILTER)) event = ev_filter; // Загрязнение фильтра.
+    if (CHECK_EVENT && (!prim_par.warning_status[0]) && (KEY_ALARM1)) event = ev_alarm1; // Пожар, перегрев вентилятора, авария частотника
+    if (CHECK_EVENT && (!prim_par.warning_status[1]) && (KEY_ALARM2)) event = ev_alarm2; // Угроза замораживания от внешнего датчика
+    if (CHECK_EVENT && (!prim_par.warning_status[11]) && (!KEY_FILTER)) event = ev_filter; // Загрязнение фильтра.
     // Проверка термометров
-    if (CHECK_EVENT && (!prim_par.alert_status[7]) && (termometers[0].err >= MAX_OFFLINES))
-        // printf("Нет термометра В1 (Помещение): %d, err=%d", prim_par.alert_status[7], termometers[0].err);
+    if (CHECK_EVENT && (!prim_par.warning_status[7]) && (termometers[0].err >= MAX_OFFLINES))
+        // printf("Нет термометра В1 (Помещение): %d, err=%d", prim_par.warning_status[7], termometers[0].err);
         event = ev_term1_nf;
-    if (CHECK_EVENT && (!prim_par.alert_status[8]) && (termometers[1].err >= MAX_OFFLINES))
+    if (CHECK_EVENT && (!prim_par.warning_status[8]) && (termometers[1].err >= MAX_OFFLINES))
         // Нет термометра В 2 - Улица
         event = ev_term2_nf;
-    if (CHECK_EVENT && (!prim_par.alert_status[9]) && (termometers[2].err >= MAX_OFFLINES))
+    if (CHECK_EVENT && (!prim_par.warning_status[9]) && (termometers[2].err >= MAX_OFFLINES))
         // Нет термометра В 3 - Подача
         event = ev_term3_nf;
-    if (CHECK_EVENT && (!prim_par.alert_status[10]) && (termometers[3].err >= MAX_OFFLINES))
+    if (CHECK_EVENT && (!prim_par.warning_status[10]) && (termometers[3].err >= MAX_OFFLINES))
         // Нет термометра В 4 - Обратка
         event = ev_term4_nf;
     // Здесь осуществляет матанализ для генерации событий
     if (UL_T < TA_IN_NOLIMIT) {
-        if (CHECK_EVENT && !(prim_par.alert_status[8] || prim_par.alert_status[2]) &&
+        if (CHECK_EVENT && !(prim_par.warning_status[8] || prim_par.warning_status[2]) &&
             (termometers[1].t < (prim_par.TA_in_Min-5))) // Температура на улице ниже критической  на 5 градусов.UL_T
             event = ev_freezing1;
-        if (CHECK_EVENT && !(prim_par.alert_status[7] || prim_par.alert_status[3]) &&
+        if (CHECK_EVENT && !(prim_par.warning_status[7] || prim_par.warning_status[3]) &&
             (termometers[0].t < prim_par.TA_out_Min) && (termometers[1].t < prim_par.TA_out_Min))  // Температура в помещения ниже критической POM_T
                // Если тепература на улице выше критической POM_T
             event = ev_freezing2;
-        if (CHECK_EVENT && !(prim_par.alert_status[10] || prim_par.alert_status[5]) &&
+        if (CHECK_EVENT && !(prim_par.warning_status[10] || prim_par.warning_status[5]) &&
             (termometers[3].t < prim_par.TW_out_Min)) // Температура воды обратки ниже критической WOUT_T
             event = ev_freezing3;
     }
@@ -275,12 +275,12 @@ void check_peripheral(void) {
                 event = (mode.run == mo_to) ? ev_end_to : ev_stop;
                 break;
             case mo_action:
-                if ((IS_ALERT == 0) && mode.run == mo_stop) {
+                if ((IS_ALARM == 0) && mode.run == mo_stop) {
                     event = ev_start;
                 }
                 break;
             case mo_to:
-                if ((IS_ALERT == 0) && mode.run == mo_stop) {
+                if ((IS_ALARM == 0) && mode.run == mo_stop) {
                     event = ev_begin_to;
                 }
                 break;
@@ -450,7 +450,7 @@ void event_processing(void) {
             event = ev_none;
             break;
         case ev_to_nf:
-            alarm_reg(0, 1, get_alert_str(6), 6);
+            alarm_reg(0, 1, get_warning_str(6), 6);
             printf("Невозможно провести ТО КРАНА." );
         case ev_end_to:
             timer_start_to = 0;
@@ -467,8 +467,8 @@ void event_processing(void) {
             if (prim_par.season) mode.pomp = 1; // Проверить
             TAP_ANGLE = PWM_MAX;
             signal_green(OFF);
-            alarm_reg(0, 1, get_alert_str(0), 0);
-            printf ("Авария: %s\r\n", get_alert_str(0));
+            alarm_reg(0, 1, get_warning_str(0), 0);
+            printf ("Авария: %s\r\n", get_warning_str(0));
             event = ev_none;
             break;
         case ev_alarm2:   // Угроза замораживания от внешнего датчика
@@ -477,12 +477,12 @@ void event_processing(void) {
             mode.fan = 0;
             mode.pomp = 1;
             TAP_ANGLE = PWM_MAX;
-            alarm_reg(0, 1, get_alert_str(1), 1);
-            printf ("АВАРИЯ: %s\r\n", get_alert_str(1));
+            alarm_reg(0, 1, get_warning_str(1), 1);
+            printf ("АВАРИЯ: %s\r\n", get_warning_str(1));
             event = ev_none;
             break;
         case ev_freezing1:  // Температура на улице ниже критической UL_T (Если не повторяется в течении часа восстановление)
-            alarm_reg(0, 1, get_alert_str(2), 2);
+            alarm_reg(0, 1, get_warning_str(2), 2);
 
             signal_red(SHORT);
             signal_buz(MEANDR);
@@ -491,74 +491,74 @@ void event_processing(void) {
             mode.fan = 0;
             if (prim_par.season) mode.pomp = 1;
             TAP_ANGLE = PWM_MAX;
-            printf ("АВАРИЯ: %s\r\n", get_alert_str(2));
+            printf ("АВАРИЯ: %s\r\n", get_warning_str(2));
             event = ev_none;
             break;
         case ev_freezing2: // Температура в помещения ниже критической POM_T
-            alarm_reg(0, 1, get_alert_str(3), 3);
+            alarm_reg(0, 1, get_warning_str(3), 3);
             signal_red(ON); signal_buz(MEANDR);
             signal_green(OFF);
             mode.run = mo_stop;  // Режим оттаивания
             mode.fan = 0;
             if (prim_par.season) mode.pomp = 1;
             TAP_ANGLE = PWM_MAX;
-            printf ("АВАРИЯ: %s\r\n", get_alert_str(3));
+            printf ("АВАРИЯ: %s\r\n", get_warning_str(3));
             event = ev_none;
             break;
         case ev_freezing3: // Температура воды обратки ниже критической POM_T
-            alarm_reg(0, 1, get_alert_str(5), 5);
+            alarm_reg(0, 1, get_warning_str(5), 5);
             signal_red(ON); signal_buz(MEANDR);
             signal_green(OFF);
             mode.run = mo_stop;  // Режим оттаивания
             mode.fan = 0;
             if (prim_par.season) mode.pomp = 1;
             TAP_ANGLE = PWM_MAX;
-            printf ("АВАРИЯ: %s\r\n", get_alert_str(5));
+            printf ("АВАРИЯ: %s\r\n", get_warning_str(5));
             event = ev_none;
             break;
         case ev_term1_nf:   // Термометр В1 помещение
-            alarm_reg(MAX_OFFLINES, termometers[0].err, get_alert_str(7), 7);
+            alarm_reg(MAX_OFFLINES, termometers[0].err, get_warning_str(7), 7);
             signal_red(ON); signal_buz(MEANDR);
             signal_green(OFF);
             mode.run = mo_stop;
             mode.fan = 0;
             if (prim_par.season) mode.pomp = 1;
             TAP_ANGLE = PWM_MAX;
-            printf ("АВАРИЯ: %s\r\n", get_alert_str(7));
+            printf ("АВАРИЯ: %s\r\n", get_warning_str(7));
             event = ev_none;
             break;
         case ev_term2_nf:  // Термометр В2 Улица
-            alarm_reg(MAX_OFFLINES, termometers[1].err, get_alert_str(8), 8);
+            alarm_reg(MAX_OFFLINES, termometers[1].err, get_warning_str(8), 8);
             signal_red(LONG); signal_buz(MEANDR);
             signal_green(OFF);
             mode.run = mo_stop;
             mode.fan = 0;
             if (prim_par.season) mode.pomp = 1;
             TAP_ANGLE = PWM_MAX;
-            printf ("АВАРИЯ: %s\r\n", get_alert_str(8));
+            printf ("АВАРИЯ: %s\r\n", get_warning_str(8));
             event = ev_none;
             break;
         case ev_term3_nf:  // Термометр В3 Подача
             // Нет его, ну и хрен с ним
-            alarm_reg(MAX_OFFLINES, termometers[2].err, get_alert_str(9), 9);
-            printf ("ПРЕДУПРЕЖДЕНИЕ: %s\r\n", get_alert_str(9));
+            alarm_reg(MAX_OFFLINES, termometers[2].err, get_warning_str(9), 9);
+            printf ("ПРЕДУПРЕЖДЕНИЕ: %s\r\n", get_warning_str(9));
             event = ev_none;
             break;
         case ev_term4_nf:  // Термометр В4 Обратка
-            alarm_reg(MAX_OFFLINES, termometers[3].err, get_alert_str(10), 10);
+            alarm_reg(MAX_OFFLINES, termometers[3].err, get_warning_str(10), 10);
             signal_red(LONG); signal_buz(MEANDR);
             signal_green(OFF);
             mode.run = mo_stop;
             mode.fan = 0;
             if (prim_par.season) mode.pomp = 1;
             TAP_ANGLE = PWM_MAX;
-            printf ("АВАРИЯ: %s\r\n", get_alert_str(10));
+            printf ("АВАРИЯ: %s\r\n", get_warning_str(10));
             event = ev_none;
             break;
         case ev_filter:  // Загрязнение фильтра.
-            alarm_reg(0, 1, get_alert_str(11), 11);
+            alarm_reg(0, 1, get_warning_str(11), 11);
             event = ev_none;
-            printf ("АВАРИЯ: %s\r\n", get_alert_str(11));
+            printf ("АВАРИЯ: %s\r\n", get_warning_str(11));
             signal_red(SHORT);
             break;
         default:
@@ -849,9 +849,9 @@ void check_serial(void) {
                 alarm_all_print(); break;
             case 0x64:  // символ 'd'
                 printf ("Проверяем список тревог.\r\n");
-                for (i=0; i < MAX_ALERTS; i++) {
+                for (i=0; i < MAX_WARNINGS; i++) {
                     if (!(alarm_unreg(i))) {
-                       printf (" Удалили активную тревогу: %s\r\n", get_alert_str(i));
+                       printf (" Удалили активную тревогу: %s\r\n", get_warning_str(i));
                     }
                 }
                 break;
