@@ -2,8 +2,8 @@
 #define __ALARMS__
 
 // ALARM - зарегистрированное событие, строка в журнале
-// ALERT - тревога, обозначает неисправность или проблему конкретного оборудовани€
-#define MAX_ALERTS 12        // Ќеобходимо синхронизировать вручную с robowater.h #define ALL_ALERTS
+// WARNING - тревога, обозначает неисправность или проблему конкретного оборудовани€
+#define MAX_WARNINGS 12        // Ќеобходимо синхронизировать вручную с robowater.h #define ALL_WARNINGS
 #define DT_LENGTH 12
 #define ALARM_LENGTH 16      // ћаксимальна€ длина строки ALARM
 #define MAX_ALARMS 8
@@ -20,7 +20,7 @@ struct st_alarm {
 extern void alarm_reg (int reg_preset, int reg_alarm, char *text_alarm, unsigned char);
 extern signed char alarm_unreg (unsigned char);
 extern void alarm_all_print (void);
-extern char *get_alert_str(unsigned char);
-extern void update_alert_menu (void);
+extern char *get_warning_str(unsigned char);
+extern void update_warning_menu (void);
 
 #endif

@@ -128,15 +128,15 @@ char high_time_TO(void) {
 void lcd_primary_screen(void) {
     char run_mod [8];
     register unsigned char i;
-    unsigned char c_alerts = 0;
+    unsigned char c_warnings = 0;
     unsigned char sign = '+';
     int lcd_term = main_menu[0].val_data;
     #ifndef NODEBUG
     // printf ("%02u:%02u Начало прорисовки экрана...", s_dt.cMM, s_dt.cSS);
     #endif
-    for (i = 0; i < MAX_ALERTS; i++) {
+    for (i = 0; i < MAX_WARNINGS; i++) {
         // 9-й алерт (отсутствие 3-го термометра) нам не интересен
-        if (prim_par.alert_status[i] && i != 9) c_alerts++;
+        if (prim_par.warning_status[i] && i != 9) c_warnings++;
     }
     // Обратите внимание, что значение режима не должно быть длинее 5-ти символов
     switch (mode.run) {
@@ -147,7 +147,7 @@ void lcd_primary_screen(void) {
         case mo_to:             sprintf(run_mod, "ТО   "); break;
         default: break;
     };
-    if (c_alerts)
+    if (c_warnings)
         sprintf(run_mod, "Авария ");
     else {
         signal_red(OFF);  signal_buz(OFF); // signal_green(OFF);

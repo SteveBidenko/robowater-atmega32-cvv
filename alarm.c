@@ -9,7 +9,7 @@
 
 struct st_alarm alarm;      // Текущий alarm
 
-flash alarm_text all_alerts[MAX_ALERTS] = {
+flash alarm_text all_warnings[MAX_WARNINGS] = {
         "Термозащита ",  // [0]
         "Замерзание ",   // [1]
         "Темп.возд.вх ", // [2]
@@ -23,18 +23,18 @@ flash alarm_text all_alerts[MAX_ALERTS] = {
         "Нет терм.B4 ",  // [10]
         "Фильтр "        // [11]
 };
-// Функция обновляющая количество активных алертов в системе для меню
-void update_alert_menu (void) {
+// Функция обновляющая количество активных warnings в системе для меню
+void update_warning_menu (void) {
     register unsigned char i;
-    KOL_ALERT = 0;
-    for (i = 0; i < MAX_ALERTS; i++) {
-        alerts[i].can_edit = prim_par.alert_status[i];
-        if (prim_par.alert_status[i]) {
-            KOL_ALERT++;
-            if (alerts[i].val_data == 0) alerts[i].val_data = 1;
+    SUM_ALARMS = 0;
+    for (i = 0; i < MAX_WARNINGS; i++) {
+        warnings[i].can_edit = prim_par.warning_status[i];
+        if (prim_par.warning_status[i]) {
+            SUM_ALARMS++;
+            if (warnings[i].val_data == 0) warnings[i].val_data = 1;
         }
     }
-    IS_ALERT = KOL_ALERT;
+    IS_ALARM = SUM_ALARMS;
 }
 // Функция регистрации ALARM
 void alarm_reg (int reg_preset, int reg_alarm, char *text_alarm, unsigned char code) {
@@ -43,8 +43,8 @@ void alarm_reg (int reg_preset, int reg_alarm, char *text_alarm, unsigned char c
     alarm.val_preset = reg_preset;
     alarm.val_alarm = reg_alarm;
     // Регистрируем событие в общей структуре prim_par
-    prim_par.alert_status[code] = 1;
-    alerts[code].val_data = reg_alarm;
+    prim_par.warning_status[code] = 1;
+    warnings[code].val_data = reg_alarm;
     // Вычисление позиции необработанного alarm
     if (prim_par.c_alarm < MAX_ALARMS) prim_par.c_alarm++;
     prim_par.alarm++;
@@ -53,18 +53,18 @@ void alarm_reg (int reg_preset, int reg_alarm, char *text_alarm, unsigned char c
     eeprom_write_alarm ((char *)&alarm, sizeof(alarm), prim_par.alarm);
     // Запись структуры установок (там хранится позиция и номер ALARM)
     eeprom_write_struct ((char *)&prim_par, sizeof(prim_par));
-    update_alert_menu ();
+    update_warning_menu ();
     return;
 }
 // Функция обработки ALARM
 signed char alarm_unreg (unsigned char code) {
     // Если событий нет, возвращаем признак -1
-    if (prim_par.alert_status[code] == 0) return -1;
+    if (prim_par.warning_status[code] == 0) return -1;
     // Разрегистрируем событие в общей структуре prim_par
-    prim_par.alert_status[code] = 0;
+    prim_par.warning_status[code] = 0;
     // Запись структуры установок (там хранится позиция и номер ALARM)
     eeprom_write_struct ((char *)&prim_par, sizeof(prim_par));
-    update_alert_menu ();
+    update_warning_menu ();
     if (code >= 7 && code <= 10) read_all_terms(INIT_MODE);
     return;
 }
@@ -91,11 +91,11 @@ void alarm_all_print (void) {
     }
 }
 // Функция, возвращающая строку названия тревоги по коду
-char *get_alert_str(unsigned char code) {
-    static alarm_text alert_string;
-    if (code < MAX_ALERTS) {
-        strcpyf (alert_string, all_alerts[code]);
-        return alert_string;
+char *get_warning_str(unsigned char code) {
+    static alarm_text warning_string;
+    if (code < MAX_WARNINGS) {
+        strcpyf (warning_string, all_warnings[code]);
+        return warning_string;
     } else {
         return NULL;
     }

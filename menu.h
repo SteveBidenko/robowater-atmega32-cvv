@@ -12,8 +12,8 @@
 #define SYNC_FROM_MENU 0
 
 #define MAIN_T main_menu[0].val_data
-#define IS_ALERT main_menu[5].can_edit
-#define KOL_ALERT main_menu[5].val_data
+#define IS_ALARM main_menu[5].can_edit
+#define SUM_ALARMS main_menu[5].val_data
 #define SET_T parameters[0].val_data
 #define POM_T parameters[1].val_data
 #define UL_T parameters[2].val_data
@@ -60,7 +60,7 @@ enum en_type {
     e_date,                   // Время в формате dd.mm.yy
     e_sync,                   // Признак установки даты-времени в микросхеме часов
     e_alarm,                  // Признак наличия аварий
-    e_alert,                  // Конкретная тревога
+    e_warning,                  // Конкретная тревога
     e_password,               // Числовой пароль -32766..32767
     e_delete,                 // Переключатель УДАЛЯТЬ/Нет\
     e_address,                // MAC адрес термометра
@@ -101,7 +101,7 @@ extern int menu_value;                // текущее значение изменяемого в меню пар
 // extern signed char curr_menu_level1, next_menu_level1;  // Текущий и следующий пункт меню
 extern struct st_parameter main_menu[NUM_MENU];
 extern struct st_parameter parameters[NUM_PARAMETERS];
-extern struct st_parameter alerts[MAX_ALERTS];
+extern struct st_parameter warnings[MAX_WARNINGS];
 extern struct st_array_pos curr_menu;                // Позиции в меню
 // Описание внешних функций
 extern void sync_set_par(unsigned char);

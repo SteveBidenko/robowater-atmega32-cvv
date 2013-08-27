@@ -78,20 +78,20 @@ struct st_parameter settings[NUM_SETTINGS]={
     {0, e_hour, 1, 52},             // [26] Установка часа проведения ТО Крана
     {0, e_minute, 1, 53}            // [27] Установка минуты проведения ТО Крана
 };
-#define ALERT_POS 61
-struct st_parameter alerts[MAX_ALERTS] = {
-    {0, e_alert, 0, ALERT_POS},
-    {0, e_alert, 0, ALERT_POS + 1},
-    {0, e_alert, 0, ALERT_POS + 2},
-    {0, e_alert, 0, ALERT_POS + 3},
-    {0, e_alert, 0, ALERT_POS + 4},
-    {0, e_alert, 0, ALERT_POS + 5},
-    {0, e_alert, 0, ALERT_POS + 6},
-    {0, e_alert, 0, ALERT_POS + 7},
-    {0, e_alert, 0, ALERT_POS + 8},
-    {0, e_alert, 0, ALERT_POS + 9},
-    {0, e_alert, 0, ALERT_POS + 10},
-    {0, e_alert, 0, ALERT_POS + 11}
+#define WARNING_POS 61
+struct st_parameter warnings[MAX_WARNINGS] = {
+    {0, e_warning, 0, WARNING_POS},
+    {0, e_warning, 0, WARNING_POS + 1},
+    {0, e_warning, 0, WARNING_POS + 2},
+    {0, e_warning, 0, WARNING_POS + 3},
+    {0, e_warning, 0, WARNING_POS + 4},
+    {0, e_warning, 0, WARNING_POS + 5},
+    {0, e_warning, 0, WARNING_POS + 6},
+    {0, e_warning, 0, WARNING_POS + 7},
+    {0, e_warning, 0, WARNING_POS + 8},
+    {0, e_warning, 0, WARNING_POS + 9},
+    {0, e_warning, 0, WARNING_POS + 10},
+    {0, e_warning, 0, WARNING_POS + 11}
 };
 flash lcd_str all_menu_str[] = {
         "Помещение ",  // [0]
@@ -356,10 +356,10 @@ void sync_set_par(byte sync) {
                 // В режиме mode.initrun прописываем значение такое, чтобы оно выходило за пределы диапазона режимов с тем, чтобы в check_peripheral() сгенерировать нужное событие
                 mode.initrun = (unsigned char)main_menu[1].val_data + INITMODE;
             };
-            for (i = 0; i < MAX_ALERTS; i++) {
-                if (prim_par.alert_status[i] && (alerts[i].val_data == 0)) {
+            for (i = 0; i < MAX_WARNINGS; i++) {
+                if (prim_par.warning_status[i] && (warnings[i].val_data == 0)) {
                  alarm_unreg (i);
-                 printf ("Удалили активную тревогу: %s\r\n", get_alert_str(i));
+                 printf ("Удалили активную тревогу: %s\r\n", get_warning_str(i));
                  read_all_terms(INIT_MODE);
                  printf ("Инициализируем все термометры!\r\n");
                  }
@@ -479,7 +479,7 @@ char *par_str(struct st_parameter *st_pointer, unsigned char only_val, int pr_da
             if (pr_data) sprintf(linestr, "%s%u!", pr_name, pr_data);
             else sprintf(linestr, "%sНЕТ", pr_name);
             break;
-        case e_alert:
+        case e_warning:
             if (pr_data) sprintf(linestr, "%s%u!", pr_name, pr_data);
             else sprintf(linestr, "%s", pr_name);
             break;
@@ -602,9 +602,9 @@ void lcd_init_edit(void) {
                     curr_menu.level = 1; // printf("Вход в меню ПАРАМЕТРЫ\r\n");
                     break;
             case 5:
-                    if (IS_ALERT) {
-                        init_curr_menu(&alerts[0], MAX_ALERTS);
-                        curr_menu.level = 1; // printf("Вход в меню ALERTS\r\n");
+                    if (IS_ALARM) {
+                        init_curr_menu(&warnings[0], MAX_WARNINGS);
+                        curr_menu.level = 1; // printf("Вход в меню WARNINGS\r\n");
                     }
                     break;
             case 6:
@@ -812,7 +812,7 @@ void lcd_edit(signed char direction) {
             if (curr_menu.val_data < 0) curr_menu.val_data = 6;
             if (curr_menu.val_data > 6) curr_menu.val_data = 0;
             break;
-        case e_alert:
+        case e_warning:
             if (direction) curr_menu.val_data = 0;
             break;
         case e_password:
@@ -853,15 +853,14 @@ void print_curr_menu(void) {
 char *getmenustr(unsigned char menu_num_pp) {
     static lcd_str menustr;
     if (menu_num_pp) {
-        if (menu_num_pp < ALERT_POS)
+        if (menu_num_pp < WARNING_POS)
             strcpyf (menustr, all_menu_str[menu_num_pp-1]);
         else
-            strcpy (menustr, get_alert_str(menu_num_pp - ALERT_POS));
+            strcpy (menustr, get_warning_str(menu_num_pp - WARNING_POS));
         return menustr;
     } else
         return NULL;
 }
-// перенес из boiler-control 15.05.2013
 // Функция преобразования абсолютного значения относительно границ в %
 // Возможны ошибки если lo > ( ? >=) hi
 int calc_percent(unsigned char x, unsigned char lo, unsigned char hi) {
