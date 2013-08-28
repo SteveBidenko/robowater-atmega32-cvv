@@ -211,10 +211,9 @@ void main(void) {
         // ÂÍÈÌÀÍÈÅ! ÍÈÆÅ ÄÎ ÎÊÎÍ×ÀÍÈß ÖÈÊËÀ WHILE ÊÎÄ ÍÅ ÄÎÁÀÂËßÒÜ!!!
         check_serial();
         poll_keys();
-        // if (event == ev_none) check_peripheral();
-        /* if (0 == 1) */ check_peripheral();
+        /* if (event == ev_none) */ check_peripheral();
         /* if (0 == 1) */ event_processing();
-        /* if (0 == 1) */ mode_processing();
+        mode_processing();
     }; // while (1)
 
 } // void main(void)
