@@ -15,7 +15,7 @@ unsigned int timer_start = 0;
 unsigned char timer_stop = 0;
 unsigned char timer_fan = 0;
 unsigned char count_fan = 0;
-// Функция, вызываемая раз в секунду либо по события, либо по прерыванию
+// Функция, вызываемая раз в секунду по событию ev_secunda
 void regular_inspection(void) {
     #ifndef NODEBUG
     // printf ("%02u:%02u Начало прерывания Секунда...", s_dt.cMM, s_dt.cSS);
@@ -86,26 +86,26 @@ void regular_inspection(void) {
         event = ev_begin_to;
     } else {
         event = ev_none;            // Очищаем событие
-    }
-    if (mode.run == mo_to) {
-        if (timer_start_to) {
-            timer_start_to--;
-                // Если достигли нуля, то Событие ev_to_nf
-            if (!timer_start_to && (ADC_VAR1 < prim_par.ADC1_hi)) {
-                printf ("Закончилось время открытия \n");
-                event = ev_to_nf;
-            }
-        }
-        if (timer_stop_to) {
-            timer_stop_to--;
-            if (ADC_VAR1 <= (prim_par.ADC1_lo + 5)) {
-               printf ("Успешное завершение ТО Крана. \n");
-               event = ev_end_to;
-            } else {
-            // Если достигли нуля, то Событие ev_to_nf
-                if (!timer_stop_to && (ADC_VAR1 > (prim_par.ADC1_lo + 10))) {
-                    printf ("Закончилось время закрытия \n");
+        if (mode.run == mo_to) {
+            if (timer_start_to) {
+                timer_start_to--;
+                    // Если достигли нуля, то Событие ev_to_nf
+                if (!timer_start_to && (ADC_VAR1 < prim_par.ADC1_hi)) {
+                    printf ("Закончилось время открытия \n");
                     event = ev_to_nf;
+                }
+            }
+            if (timer_stop_to) {
+                timer_stop_to--;
+                if (ADC_VAR1 <= (prim_par.ADC1_lo + 5)) {
+                   printf ("Успешное завершение ТО Крана. \n");
+                   event = ev_end_to;
+                } else {
+                // Если достигли нуля, то Событие ev_to_nf
+                    if (!timer_stop_to && (ADC_VAR1 > (prim_par.ADC1_lo + 10))) {
+                        printf ("Закончилось время закрытия \n");
+                        event = ev_to_nf;
+                    }
                 }
             }
         }
