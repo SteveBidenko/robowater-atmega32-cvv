@@ -235,37 +235,8 @@ void check_peripheral(void) {
     if (CHECK_EVENT &&  (!KEY_STOP)) event = ev_stop;
     // Обслуживаем кнопку старт, Проверяя при этом наличие каких-либо аварий
     if (CHECK_EVENT && (IS_ALARM == 0) && (!KEY_START)) event = ev_start;
-    // Для более "живой" клавиатуры выходим, если событие сгенерировано
-    // Проверка свитчиков
-    if (CHECK_EVENT && (!prim_par.warning_status[0]) && (KEY_ALARM1)) event = ev_alarm1; // Пожар, перегрев вентилятора, авария частотника
-    if (CHECK_EVENT && (!prim_par.warning_status[1]) && (KEY_ALARM2)) event = ev_alarm2; // Угроза замораживания от внешнего датчика
-    if (CHECK_EVENT && (!prim_par.warning_status[11]) && (!KEY_FILTER)) event = ev_filter; // Загрязнение фильтра.
-    // Проверка термометров
-    if (CHECK_EVENT && (!prim_par.warning_status[7]) && (termometers[0].err >= MAX_OFFLINES))
-        // printf("Нет термометра В1 (Помещение): %d, err=%d", prim_par.warning_status[7], termometers[0].err);
-        event = ev_term1_nf;
-    if (CHECK_EVENT && (!prim_par.warning_status[8]) && (termometers[1].err >= MAX_OFFLINES))
-        // Нет термометра В 2 - Улица
-        event = ev_term2_nf;
-    if (CHECK_EVENT && (!prim_par.warning_status[9]) && (termometers[2].err >= MAX_OFFLINES))
-        // Нет термометра В 3 - Подача
-        event = ev_term3_nf;
-    if (CHECK_EVENT && (!prim_par.warning_status[10]) && (termometers[3].err >= MAX_OFFLINES))
-        // Нет термометра В 4 - Обратка
-        event = ev_term4_nf;
-    // Здесь осуществляет матанализ для генерации событий
-    if (UL_T < TA_IN_NOLIMIT) {
-        if (CHECK_EVENT && !(prim_par.warning_status[8] || prim_par.warning_status[2]) &&
-            (termometers[1].t < (prim_par.TA_in_Min-5))) // Температура на улице ниже критической  на 5 градусов.UL_T
-            event = ev_freezing1;
-        if (CHECK_EVENT && !(prim_par.warning_status[7] || prim_par.warning_status[3]) &&
-            (termometers[0].t < prim_par.TA_out_Min) && (termometers[1].t < prim_par.TA_out_Min))  // Температура в помещения ниже критической POM_T
-               // Если тепература на улице выше критической POM_T
-            event = ev_freezing2;
-        if (CHECK_EVENT && !(prim_par.warning_status[10] || prim_par.warning_status[5]) &&
-            (termometers[3].t < prim_par.TW_out_Min)) // Температура воды обратки ниже критической WOUT_T
-            event = ev_freezing3;
-    }
+    // проверяeм термометры, наличие warnings и alarms
+    regular_check_alarm_and_warnings();
     // Проверяем, что из меню была задана команда ПУСК, СТОП или ТО
     if (CHECK_EVENT && (mode.initrun)) {
         mode.initrun -= INITMODE;
@@ -482,10 +453,8 @@ void event_processing(void) {
             break;
         case ev_freezing1:  // Температура на улице ниже критической UL_T (Если не повторяется в течении часа восстановление)
             alarm_reg(0, 1, get_warning_str(2), 2);
-
-            signal_red(SHORT);
+            signal_red(ON);
             signal_buz(MEANDR);
-            //signal_green(SHORT);
             mode.run = mo_stop; // Режим оттаивания
             mode.fan = 0;
             if (prim_par.season) mode.pomp = 1;

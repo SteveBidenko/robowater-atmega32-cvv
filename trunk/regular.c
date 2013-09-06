@@ -7,6 +7,7 @@
 #include "menu.h"
 #include "spd1820.h"
 #include "dayofweek.h"
+#include "keys.h"
 // Описание модульных переменных
 unsigned int time_integration = 0;
 unsigned char timer_start_to = 0;
@@ -15,6 +16,42 @@ unsigned int timer_start = 0;
 unsigned char timer_stop = 0;
 unsigned char timer_fan = 0;
 unsigned char count_fan = 0;
+// Функция, делающая регуларный анализ значения термометров
+void regular_check_alarm_and_warnings(void) {
+    // Проверка свитчиков
+    if (CHECK_EVENT && (!prim_par.warning_status[0]) && (KEY_ALARM1)) event = ev_alarm1; // Пожар, перегрев вентилятора, авария частотника
+    if (CHECK_EVENT && (!prim_par.warning_status[1]) && (KEY_ALARM2)) event = ev_alarm2; // Угроза замораживания от внешнего датчика
+    if (CHECK_EVENT && (!prim_par.warning_status[11]) && (!KEY_FILTER)) event = ev_filter; // Загрязнение фильтра.
+    // Проверка термометров
+    if (CHECK_EVENT && (!prim_par.warning_status[7]) && (termometers[0].err >= MAX_OFFLINES))
+        // printf("Нет термометра В1 (Помещение): %d, err=%d", prim_par.warning_status[7], termometers[0].err);
+        event = ev_term1_nf;
+    if (CHECK_EVENT && (!prim_par.warning_status[8]) && (termometers[1].err >= MAX_OFFLINES))
+        // Нет термометра В 2 - Улица
+        event = ev_term2_nf;
+    if (CHECK_EVENT && (!prim_par.warning_status[9]) && (termometers[2].err >= MAX_OFFLINES))
+        // Нет термометра В 3 - Подача
+        event = ev_term3_nf;
+    if (CHECK_EVENT && (!prim_par.warning_status[10]) && (termometers[3].err >= MAX_OFFLINES))
+        // Нет термометра В 4 - Обратка
+        event = ev_term4_nf;
+    // Здесь осуществляет матанализ для генерации событий
+    if ((UL_T < TA_IN_NOLIMIT) && (termometers[1].err >= MAX_OFFLINES)) {
+        printf ("UL_T стало меньше TA_IN_NOLIMIT\r\n");
+        if (CHECK_EVENT &&
+          !(prim_par.warning_status[8] || prim_par.warning_status[2]) &&
+          (termometers[1].t < (prim_par.TA_in_Min - 5))) // Температура на улице ниже критической  на 5 градусов.UL_T
+            event = ev_freezing1;
+        if (CHECK_EVENT && !(prim_par.warning_status[7] || prim_par.warning_status[3]) &&
+            (termometers[0].t < prim_par.TA_out_Min) && (termometers[1].t < prim_par.TA_out_Min))  // Температура в помещения ниже критической POM_T
+               // Если тепература на улице выше критической POM_T
+            event = ev_freezing2;
+        if (CHECK_EVENT && !(prim_par.warning_status[10] || prim_par.warning_status[5]) &&
+            (termometers[3].t < prim_par.TW_out_Min)) // Температура воды обратки ниже критической WOUT_T
+            event = ev_freezing3;
+    }
+
+}
 // Функция, вызываемая раз в секунду по событию ev_secunda
 void regular_inspection(void) {
     #ifndef NODEBUG
