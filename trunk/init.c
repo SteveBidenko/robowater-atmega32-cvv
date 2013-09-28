@@ -46,7 +46,7 @@ Data Stack size         : 512
 #include "menu.h"
 #include "signals.h"
 #include "at2404.h"
-#include "keys.h"
+#include "sensors.h"
 #define NODEBUG
 // Описание локальных функций
 unsigned int read_adc(unsigned char);

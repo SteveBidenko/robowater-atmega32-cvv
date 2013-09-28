@@ -7,7 +7,7 @@
 #include "menu.h"
 #include "spd1820.h"
 #include "dayofweek.h"
-#include "keys.h"
+#include "sensors.h"
 #define NODEBUG
 // Описание модульных переменных
 unsigned int time_integration = 0;
@@ -20,9 +20,9 @@ unsigned char count_fan = 0;
 // Функция, делающая регуларный анализ значения термометров
 void regular_check_alarm_and_warnings(void) {
     // Проверка свитчиков
-    if (CHECK_EVENT && (!prim_par.warning_status[0]) && (KEY_ALARM1)) event = ev_alarm1; // Пожар, перегрев вентилятора, авария частотника
-    if (CHECK_EVENT && (!prim_par.warning_status[1]) && (KEY_ALARM2)) event = ev_alarm2; // Угроза замораживания от внешнего датчика
-    if (CHECK_EVENT && (!prim_par.warning_status[11]) && (!KEY_FILTER)) event = ev_filter; // Загрязнение фильтра.
+    if (CHECK_EVENT && (!prim_par.warning_status[0]) && (SENSOR_ALARM1)) event = ev_alarm1; // Пожар, перегрев вентилятора, авария частотника
+    if (CHECK_EVENT && (!prim_par.warning_status[1]) && (SENSOR_ALARM2)) event = ev_alarm2; // Угроза замораживания от внешнего датчика
+    if (CHECK_EVENT && (!prim_par.warning_status[11]) && (!SENSOR_FILTER)) event = ev_filter; // Загрязнение фильтра.
     // Проверка термометров
     if (CHECK_EVENT && (!prim_par.warning_status[7]) && (termometers[0].err >= MAX_OFFLINES))
         // printf("Нет термометра В1 (Помещение): %d, err=%d", prim_par.warning_status[7], termometers[0].err);
