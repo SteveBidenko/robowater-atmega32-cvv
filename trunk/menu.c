@@ -4,6 +4,7 @@
 #include <ds1307.h> // DS1307 Real Time Clock functions
 #include <delay.h>
 #include "robowater.h"
+#include "fan.h"
 #include "menu.h"
 #include "spd1820.h"
 #include "alarm.h"
@@ -203,10 +204,8 @@ void sync_set_par(byte sync) {
             settings[i_set10].val_data = -1;
         }
         if (mode.run == mo_stop) {  // Запоминает только в режиме останова
-            parameters[8].val_data = prim_par.fan_speed  ;
+            FAN_SPEED = prim_par.fan_speed;
         };
-
-        //parameters[8].val_data = FAN_SPEED;// 12.06.2013
         parameters[0].val_data = prim_par.TA_out_prs;
         parameters[10].val_data = mode.pomp;
         // printf("Чтени времени и даты \r\n");
@@ -344,9 +343,9 @@ void sync_set_par(byte sync) {
                 prim_par.TA_out_prs = parameters[0].val_data; need_eeprom_write = 1;
             };
             if (mode.run == mo_stop) {
-                if (prim_par.fan_speed  != parameters[8].val_data) {
-                    if (parameters[8].val_data <= FAN_SPEED_MIN) parameters[8].val_data = FAN_SPEED_MIN;
-                    prim_par.fan_speed = parameters[8].val_data; need_eeprom_write = 1;
+                if (prim_par.fan_speed != FAN_SPEED) {
+                    prim_par.fan_speed = FAN_SPEED = check_fan_range(FAN_SPEED); 
+                    need_eeprom_write = 1;
                 };
             };
             if (mode.pomp  != parameters[10].val_data) {
