@@ -119,4 +119,5 @@ extern char *getmenustr(unsigned char menu_num_pp);
 // перенес из boiler-control 15.05.2013
 extern int calc_percent(unsigned char, unsigned char, unsigned char);
 // extern unsigned char next_menu(signed char *menu_level, signed char menu_choice);
+extern void menu_timer_break(void);
 #endif
