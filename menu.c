@@ -8,6 +8,7 @@
 #include "spd1820.h"
 #include "alarm.h"
 #include "at2404.h"
+#include "regular.h"
 // Объявление макроподстановок
 // Структура основных переменных
 // signed char curr_menu_level1 = 0, next_menu_level1 = 1;  // Текущий и следующий пункт меню
@@ -874,4 +875,16 @@ int calc_percent(unsigned char x, unsigned char lo, unsigned char hi) {
     }
 
     return ((int) result);
+}
+// Функция определяющее поведение меню в случае срабатывания таймера инактивности
+void menu_timer_break(void) {
+    // Если мы находимся в меню, а не в галвном экране - то заново запускаем таймер неактивности
+    if (mode.menu) menu_timer_inactive = TIMER_INACTIVE; // TIMER_INACTIVE;
+    switch (mode.menu) {
+        case 0: lcd_primary_screen(); break;
+        case 1: --mode.menu; lcd_esc_edit(); break;
+        case 2: --mode.menu; lcd_esc_edit(); break;
+        case 3: mode.menu = 1; break;
+    };
+    lcd_clrscr();
 }

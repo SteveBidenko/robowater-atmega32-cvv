@@ -18,7 +18,7 @@
 #include "season.h"
 // Локальные макроподстановки
 #define MAJOR_VERSION 5
-#define MINOR_VERSION 5
+#define MINOR_VERSION 6
 // #define NODEBUG
 // enum
 // Определение главных структур
@@ -309,24 +309,11 @@ void event_processing(void) {
                 case 2: lcd_save_edit(); mode.menu = 1; break;
             };
             break;
-        case ev_timer:
-            // Запускаем таймер инактивности
-            if (mode.menu) menu_timer_inactive = TIMER_INACTIVE; // TIMER_INACTIVE;
         case ev_cancel:
-            if (event == ev_cancel) {
-                signal_buz(SHORT);
-                key_treated[3]=1;
-                menu_timer_inactive = TIMER_INACTIVE;     //Запускаем таймер инактивности ()
-            }
+            menu_timer_break();
+            signal_buz(SHORT);
+            key_treated[3]=1;
             event = ev_none;            // Очищаем событие
-            // print_prim_par((unsigned char *)&prim_par, sizeof(prim_par));
-            switch (mode.menu) {
-                case 0: lcd_primary_screen(); break;
-                case 1: --mode.menu; lcd_esc_edit(); break;
-                case 2: --mode.menu; lcd_esc_edit(); break;
-                case 3: mode.menu = 1; break;
-            };
-             lcd_clrscr();
             break;
         case ev_start:      // пуск установки
             key_treated[1]=1;

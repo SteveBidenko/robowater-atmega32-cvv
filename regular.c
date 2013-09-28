@@ -8,6 +8,7 @@
 #include "spd1820.h"
 #include "dayofweek.h"
 #include "keys.h"
+#define NODEBUG
 // Описание модульных переменных
 unsigned int time_integration = 0;
 unsigned char timer_start_to = 0;
@@ -37,13 +38,17 @@ void regular_check_alarm_and_warnings(void) {
         event = ev_term4_nf;
     // Здесь осуществляет матанализ для генерации событий
     if ((UL_T < TA_IN_NOLIMIT) && (termometers[1].err >= MAX_OFFLINES)) {
-        printf ("UL_T стало меньше TA_IN_NOLIMIT\r\n");
+        #ifndef NODEBUG
+        if (!(prim_par.warning_status[2] || prim_par.warning_status[3] || prim_par.warning_status[7] || prim_par.warning_status[10])) {
+            printf ("UL_T стало меньше TA_IN_NOLIMIT\r\n");
+        }
+        #endif
         if (CHECK_EVENT &&
           !(prim_par.warning_status[8] || prim_par.warning_status[2]) &&
           (termometers[1].t < (prim_par.TA_in_Min - 5))) // Температура на улице ниже критической  на 5 градусов.UL_T
             event = ev_freezing1;
         if (CHECK_EVENT && !(prim_par.warning_status[7] || prim_par.warning_status[3]) &&
-            (termometers[0].t < prim_par.TA_out_Min) && (termometers[1].t < prim_par.TA_out_Min))  // Температура в помещения ниже критической POM_T
+            (termometers[0].t < prim_par.TA_out_Min) && (termometers[1].t < prim_par.TA_out_Min)) // Температура в помещения ниже критической POM_T
                // Если тепература на улице выше критической POM_T
             event = ev_freezing2;
         if (CHECK_EVENT && !(prim_par.warning_status[10] || prim_par.warning_status[5]) &&
@@ -86,13 +91,7 @@ void regular_inspection(void) {
     if (menu_timer_inactive) {
         menu_timer_inactive--;
         // Если достигли нуля, то останавливаем обслуживание valcoder
-        if (!menu_timer_inactive) {
-            if (event)
-                menu_timer_inactive++;
-            else
-                event = ev_timer;
-            // clatsman.valcoder_mode = 0; lcd_clrscr();
-        }
+        if (!menu_timer_inactive) menu_timer_break();
     }
     if (!mode.stop_sync_dt) get_cur_dt (0);
     read_all_terms(DUTY_MODE);
