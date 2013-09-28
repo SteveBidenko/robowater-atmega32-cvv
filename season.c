@@ -2,6 +2,7 @@
 #include <stdlib.h>  // for abs
 #include <stdio.h>
 #include "robowater.h"
+#include "fan.h"
 #include "signals.h"
 #include "season.h"
 #include "menu.h"
@@ -12,38 +13,37 @@ unsigned char tap_angle_min = 0;   // Ограничение крана снизу от температуры
 // Подпрограмма регулирования охладителя (не зимой)
 void coolant_regulator (void) {
     if (prim_par.season) return;   // защита от дурака-программиста
-    // Для установок с водяным охладителем !
-    // Запуск охладителя
+    // Для установок с водяным охладителем запускаем охладитель
     if (time_cooling == 0) {
         //if (POM_T > (SET_T + (prim_par. Ki*10))) {
         if (UL_T > SET_T) {
             if (POM_T > SET_T) {
-                //if ( mode.cooling1 == 0) {
-                //      mode.cooling1 = 1;
-                //      signal_green(SHORT);
-                //} else {
-                //      mode.cooling2 = 1;
-                //      signal_green(LONG);
-                // }
+                /* if ( mode.cooling1 == 0) {
+                      mode.cooling1 = 1;
+                      signal_green(SHORT);
+                } else {
+                      mode.cooling2 = 1;
+                      signal_green(LONG);
+                } */
                 if (mode.print) printf("Включен охладитель.  POM_T :%d\r\n",   POM_T);
             }
         }
         //Остановка охладителя
         if (POM_T < (SET_T - (prim_par. Ki*10)) || (UL_T < SET_T) )  {
-            //if ( mode.cooling1 == 1) {
-            //     mode.cooling1 = 0;
-            //     signal_green(SHORT);
-            // } else {
-            //     mode.cooling2 = 0;
-            //     signal_green(ON);
-            // }
+            /* if (mode.cooling1 == 1) {
+                 mode.cooling1 = 0;
+                 signal_green(SHORT);
+            } else {
+                 mode.cooling2 = 0;
+                 signal_green(ON);
+            } */
             if (mode.print) printf("Отключен охладитель. Разность температур - дельта: %d, POM_T :%d\r\n",  (SET_T - (prim_par. Ki*10)), POM_T);
         }
         time_cooling = prim_par.T_z;
-        //time_cooling = TIME_COOLING_MAX;
-        //mode.cooling1 = 0;
-        //mode.cooling2 = 0;
-        //count_cooling = 0;
+        /* time_cooling = TIME_COOLING_MAX;
+        mode.cooling1 = 0;
+        mode.cooling2 = 0;
+        count_cooling = 0; */
     }
 }
 // Подпрограмма регулирования скорости вентилятора зимой
@@ -57,27 +57,21 @@ void winter_fan_speed(void) {
     if ((TAP_ANGLE == PWM_MAX) && ((POM_T - FAN_SPEED_T_DOWN) < SET_T)) {
         count_fan++;
         if (count_fan == COUNT_FAN_MAX) {
-           FAN_SPEED = FAN_SPEED - FAN_SPEED_STEP;
+           FAN_SPEED = check_fan_range(FAN_SPEED - FAN_SPEED_STEP);
            count_fan = 0;
-           if  (FAN_SPEED <= FAN_SPEED_MIN) FAN_SPEED = FAN_SPEED_MIN;
-        //if (!mode.print) printf("Понижение скорости вентилятора расчетное : %d, измеренное : %d, Счетчик циклов :%d, POM_T :%d \r\n",  FAN_SPEED, ADC_VAR2, count_fan, POM_T);
         if (mode.print) printf("Понижение скорости вентилятора расчетное : %d, измеренное : %d, Счетчик циклов :%d, POM_T :%d \r\n",  FAN_SPEED, ADC_VAR2, count_fan, POM_T);
         }
     } else  {// count_fan = 0;
         if ((FAN_SPEED < prim_par.fan_speed) && ((POM_T + FAN_SPEED_T_UP) > SET_T)) {   //&& (TAP_ANGLE == tap_angle_min
             count_fan++;
             if (count_fan == COUNT_FAN_MAX) {
-               FAN_SPEED = FAN_SPEED + FAN_SPEED_STEP;
+               FAN_SPEED = check_fan_range(FAN_SPEED + FAN_SPEED_STEP);
                count_fan = 0;
-               //if  (prim_par.fan_speed <= FAN_SPEED) FAN_SPEED = prim_par.fan_speed;
-               if  (FAN_SPEED > prim_par.fan_speed ) FAN_SPEED = prim_par.fan_speed;
-               //if (!mode.print) printf("Увеличение скорости вентилятора расчетная: %d, измеренная : %d, Счетчик циклов :%d, Заданная скорость :%d \r\n",  FAN_SPEED, ADC_VAR2, count_fan, prim_par.fan_speed);
                if (mode.print) printf("Увеличение скорости вентилятора расчетная: %d, измеренная : %d, Счетчик циклов :%d, Заданная скорость :%d \r\n",  FAN_SPEED, ADC_VAR2, count_fan, prim_par.fan_speed);
             }
 
         } else count_fan = 0;
     }
-    //if (!mode.print) printf("Скорость вентилятора расчетная: %d, измеренная : %d, Заданная скорость: %d, POM_T: %d, TAP_ANGLE_MIN = %d \r\n",  FAN_SPEED, ADC_VAR2, prim_par.fan_speed, POM_T, tap_angle_min);
     if (mode.print) printf("Скорость вентилятора расчетная: %d, измеренная : %d, Заданная скорость: %d, POM_T: %d, TAP_ANGLE_MIN = %d \r\n",  FAN_SPEED, ADC_VAR2, prim_par.fan_speed, POM_T, tap_angle_min);
 }
 // Подпрограмма поддержки работоспособности системы зимой в режиме останова
@@ -89,8 +83,9 @@ void keep_life_in_winter(void) {
     if (!prim_par.season) return;   // защита от дурака-программиста
    // Вычисление ограничения закрытия крана TAP_ANGLE = tap_angle_min
     if (prim_par.season && (UL_T < TA_IN_NOLIMIT)) {
-        //int tmp_delta = abs(prim_par.TA_in_Min) + TA_IN_NOLIMIT;
-        //mode.k_angle_limit = (TAP_ANGLE_LIMIT / tmp_delta) * 1000;
+        // Закомментировано в связи с тем, что границы PWM задаются из меню
+        // int tmp_delta = abs(prim_par.TA_in_Min) + TA_IN_NOLIMIT;
+        // mode.k_angle_limit = (TAP_ANGLE_LIMIT / tmp_delta) * 1000;
         tap_angle_min =prim_par.tap_angle + ((long int)((TA_IN_NOLIMIT - UL_T) * mode.k_angle_limit))/1000;   // вычисление ограничения крана по температуре воздуха на входе и коэффициенту mode.k_angle_limit
         if (tap_angle_min < 100) tap_angle_min = 100 ;  // Принудительный запрет закрытия крана меньше 40% в режиме стоп
     }

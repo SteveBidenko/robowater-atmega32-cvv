@@ -57,6 +57,14 @@ void regular_check_alarm_and_warnings(void) {
     }
 
 }
+// Функция, прописывающая значения термометров по глобальным переменным 
+void link_terms(void) {
+    MAIN_T = read_term(0);      // Выводим информацию о главном термометре !!!
+    POM_T = read_term(0);
+    UL_T = read_term(1);
+    WIN_T = read_term(2);
+    WOUT_T = read_term(3); 
+} 
 // Функция, вызываемая раз в секунду по событию ev_secunda
 void regular_inspection(void) {
     #ifndef NODEBUG
@@ -104,11 +112,7 @@ void regular_inspection(void) {
     // printf ("конец в %02u:%02u\r\n", s_dt.cMM, s_dt.cSS);
     #endif
     s_dt.dayofweek = dayofweek(s_dt.cdd, s_dt.cmo, s_dt.cyy);
-    MAIN_T = read_term(0);      // Выводим информацию о главном термометре !!!
-    POM_T = read_term(0);
-    UL_T = read_term(1);
-    WIN_T = read_term(2);
-    WOUT_T = read_term(3);
+    link_terms();
     switch (mode.menu) {
         case 0: lcd_primary_screen(); break;
         // case 2: lcd_edit(0); break;

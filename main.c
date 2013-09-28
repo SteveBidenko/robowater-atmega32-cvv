@@ -16,6 +16,7 @@
 #include "dayofweek.h"
 #include "regular.h"
 #include "season.h"
+#include "fan.h"
 // Локальные макроподстановки
 #define MAJOR_VERSION 5
 #define MINOR_VERSION 6
@@ -122,7 +123,6 @@ unsigned char size_prim_par;        // Почти константа. Нужна для функций записи
 
 int time_cooling = 0;
 int tmp_delta;
-byte fan_speed = 0;  // Скорость вентилятора
 enum en_event event;                          // Текущее событие в системе
 #define HELP_LINES 14
 typedef char help_str[70];
@@ -188,17 +188,10 @@ void main(void) {
     printallterms(0);
     #endif
     lcd_primary_screen();       // выводим стартовую картинку на экранчик
-    // if (PINC.6) PORTD |= (1<<4); else PORTD &= ~(1<<4);
-    // if (PINC.7) PORTD &= ~(1<<5); else PORTD |= (1<<5);
-    // if (PINC.5) PORTD &= ~(1<<5); else PORTD |= (1<<5);
     if (prim_par.season) signal_white(ON); else signal_white(OFF);
-    FAN_SPEED = prim_par.fan_speed;
-    fan_speed = FAN_SPEED;
-    if (FAN_SPEED <= FAN_SPEED_MIN) FAN_SPEED = FAN_SPEED_MIN;
-    POM_T = termometers[0].t;
-    UL_T = termometers[1].t;
-    WIN_T = termometers[2].t;
-    WOUT_T = termometers[3].t;
+    FAN_SPEED = check_fan_range(prim_par.fan_speed);
+    link_terms();
+    // Вычисляем значение крана по наружной температуре
     tmp_delta = abs(prim_par.TA_in_Min) + TA_IN_NOLIMIT;  // вычисление диапазона работы ограничителя крана по температуре
     mode.k_angle_limit = ((TAP_ANGLE_LIMIT * 1000) / tmp_delta); // вычисление коэффициента ограничения крана для заданных настроек
     if (UL_T < TA_IN_NOLIMIT) {    // Вычисление угла ограничения (UL_T < TA_IN_NOLIMIT)
@@ -337,8 +330,7 @@ void event_processing(void) {
                         signal_green(ON);
                         printf("Включен режим Пуск\r\n");
                     };
-                    FAN_SPEED = prim_par.fan_speed;
-                    if (FAN_SPEED <= FAN_SPEED_MIN) FAN_SPEED = FAN_SPEED_MIN;
+                    FAN_SPEED = check_fan_range(prim_par.fan_speed);
                     //count_fan = 0;
                     time_integration = 0;
                     //time_cooling = TIME_COOLING_MAX;

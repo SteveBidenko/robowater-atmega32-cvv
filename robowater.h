@@ -38,11 +38,6 @@
 #define STRLENGTH 16                // Длина строки параметра
 #define TIME_COOLING_MAX 15       //время задержки включения охладителя секунд
 #define COUNT_FAN_MAX 5          // Максимальное количество осчетов для изменения оборотов вентилятора
-#define FAN_SPEED_MIN 102             // Минимальный предел оборотов вентилятора (40% = 20 Герц )
-#define FAN_SPEED_STEP 10            // Шаг изменения оборотов вентилятора
-#define FAN_SPEED_T_UP 300
-#define FAN_SPEED_T_DOWN 200
-#define FAN PORTD.4    // Порт.Пин вентилятора
 #define POMP PORTD.5     // Порт.Пин насоса
 #define COUNT_SIGNAL_MAX 50 // Количество тиков таймера 1 (1мс) для формирования сигналов звука и светодиодов. 0,5 сек / 1мс = 500
 //#define COOLING1 PORTD.7     // Порт.Пин Охладителя 1
