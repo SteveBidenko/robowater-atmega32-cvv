@@ -12,7 +12,7 @@
 #include "at2404.h"
 #include "alarm.h"
 #include "signals.h"
-#include "keys.h"
+#include "sensors.h"
 #include "dayofweek.h"
 #include "regular.h"
 #include "season.h"

@@ -1,6 +1,6 @@
 #include <mega32.h>
 #include <stdio.h>
-#include "keys.h"
+#include "sensors.h"
 #include "robowater.h"
 #include "valcoder.h"
 #include "bits.h"
@@ -22,9 +22,9 @@ struct st_key {
     {-1, 0, 0, 0, 0, 0, 0x33, 5},     // [1] KEY_START  PINC.5
     {-1, 0, 0, 0, 0, 0, 0x33, 6},     // [2] KEY_ENTER  PINC.6
     {-1, 0, 0, 0, 0, 0, 0x33, 7},     // [3] KEY_CANCEL PINC.7
-    {-1, 0, 0, 0, 0, 0, 0x33, 2},     // [4] KEY_ALARM1 PINC.2
-    {-1, 0, 0, 0, 0, 0, 0x33, 4},     // [5] KEY_ALARM2 PINC.4
-    {-1, 0, 0, 0, 0, 0, 0x36, 1}      // [6] KEY_FILTER PINB.1
+    {-1, 0, 0, 0, 0, 0, 0x33, 2},     // [4] SENSOR_ALARM1 PINC.2
+    {-1, 0, 0, 0, 0, 0, 0x33, 4},     // [5] SENSOR_ALARM2 PINC.4
+    {-1, 0, 0, 0, 0, 0, 0x36, 1}      // [6] SENSOR_FILTER PINB.1
     // PINA = 0x39, PORTA = 0x3B
     // PINB = 0x36, PORTB = 0x38
     // PINC = 0x33, PORTC = 0x35
