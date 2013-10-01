@@ -169,8 +169,8 @@ void sync_set_par(byte sync) {
         settings[7].val_data = prim_par.Ki;
         settings[8].val_data = prim_par.Kd;
         // перенес из boiler-control 15.05.2013
-        settings[17].val_data = prim_par.PWM1_lo;
-        settings[18].val_data = prim_par.PWM1_hi;
+        settings[17].val_data = PWM_MIN;
+        settings[18].val_data = PWM_MAX;
         settings[19].val_data = prim_par.ADC1_lo;
         settings[20].val_data = prim_par.ADC1_hi;
         settings[21].val_data = prim_par.PWM2_lo;
@@ -264,11 +264,11 @@ void sync_set_par(byte sync) {
                 prim_par.Kd = settings[8].val_data; need_eeprom_write = 1;
             }
             // перенес из boiler-control 15.05.2013
-            if (prim_par.PWM1_lo != settings[17].val_data) {
-                prim_par.PWM1_lo = settings[17].val_data; need_eeprom_write = 1;
+            if (PWM_MIN != settings[17].val_data) {
+                PWM_MIN = settings[17].val_data; need_eeprom_write = 1;
             }
-            if (prim_par.PWM1_hi != settings[18].val_data) {
-                prim_par.PWM1_hi = settings[18].val_data; need_eeprom_write = 1;
+            if (PWM_MAX != settings[18].val_data) {
+                PWM_MAX = settings[18].val_data; need_eeprom_write = 1;
             }
             if (prim_par.ADC1_lo != settings[19].val_data) {
                 prim_par.ADC1_lo = settings[19].val_data; need_eeprom_write = 1;
@@ -410,7 +410,7 @@ char *par_str(struct st_parameter *st_pointer, unsigned char only_val, int pr_da
             // Если указан тип проценты, то печатаем как проценты
             switch(st_pointer->str_num) {
                 case (18): percent = calc_percent(pr_data, prim_par.ADC1_lo, prim_par.ADC1_hi); break;   // Текущее состояние крана (АЦП1)
-                case (19): percent = calc_percent(pr_data, prim_par.PWM1_lo, prim_par.PWM1_hi); break;   // Заданное состояние крана (PWM1)
+                case (19): percent = calc_percent(pr_data, PWM_MIN, PWM_MAX); break;   // Заданное состояние крана (PWM1)
                 case (20): percent = calc_percent(pr_data, prim_par.ADC2_lo, prim_par.ADC2_hi); break;   // Текущее состояние вентилятора (АЦП2)
                 case (21): percent = calc_percent(pr_data, prim_par.PWM2_lo, prim_par.PWM2_hi); break;   // Заданное состояние крана (PWM2)
             };

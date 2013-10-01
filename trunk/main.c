@@ -19,7 +19,7 @@
 #include "fan.h"
 // Локальные макроподстановки
 #define MAJOR_VERSION 5
-#define MINOR_VERSION 6
+#define MINOR_VERSION 7
 // #define NODEBUG
 // enum
 // Определение главных структур
@@ -122,7 +122,6 @@ struct st_eeprom_par prim_par={
 unsigned char size_prim_par;        // Почти константа. Нужна для функций записи/чтения из/в EEPROM
 
 int time_cooling = 0;
-int tmp_delta;
 enum en_event event;                          // Текущее событие в системе
 #define HELP_LINES 14
 typedef char help_str[70];
@@ -192,14 +191,7 @@ void main(void) {
     FAN_SPEED = check_fan_range(prim_par.fan_speed);
     link_terms();
     // Вычисляем значение крана по наружной температуре
-    tmp_delta = abs(prim_par.TA_in_Min) + TA_IN_NOLIMIT;  // вычисление диапазона работы ограничителя крана по температуре
-    mode.k_angle_limit = ((TAP_ANGLE_LIMIT * 1000) / tmp_delta); // вычисление коэффициента ограничения крана для заданных настроек
-    if (UL_T < TA_IN_NOLIMIT) {    // Вычисление угла ограничения (UL_T < TA_IN_NOLIMIT)
-        tap_angle_min = prim_par.tap_angle + ((long int)((TA_IN_NOLIMIT - UL_T) * mode.k_angle_limit))/1000;   // вычисление ограничения крана по температуре воздуха на входе и коэффициенту mode.k_angle_limit
-        printf(" tap_angle_min %u .   Kоэффициент :%d\r\n",  tap_angle_min, mode.k_angle_limit);
-    };
-    TAP_ANGLE = (TAP_ANGLE < tap_angle_min) ? tap_angle_min : prim_par.tap_angle;
-    printf(" Установка крана %u .   prim_par.tap_angle :%d\r\n", TAP_ANGLE, prim_par.tap_angle);
+    tap_angle_check_range();
     while(1) {
         // ВНИМАНИЕ! НИЖЕ ДО ОКОНЧАНИЯ ЦИКЛА WHILE КОД НЕ ДОБАВЛЯТЬ!!!
         check_serial();
@@ -393,7 +385,7 @@ void event_processing(void) {
                 mode.run = mo_to;
                 timer_start_to = T_TO; // Запускаем таймер STRT
                 timer_stop_to = 0;
-                TAP_ANGLE = prim_par.PWM1_hi;
+                TAP_ANGLE = PWM_MAX;
                 printf("ТО КРАНА. Открывание LIMIT = %d, Время на открывание = %d\n", TAP_ANGLE, timer_start_to);
             }
             event = ev_none;
@@ -531,7 +523,7 @@ void mode_processing(void) {
            break;
         case mo_to:
             if ((timer_stop_to == 0) && (ADC_VAR1 >= (prim_par.ADC1_hi - 10))) {
-               TAP_ANGLE = prim_par.PWM1_lo;
+               TAP_ANGLE = PWM_MIN;
                timer_start_to = 0;
                timer_stop_to = T_TO;
                printf("ТО КРАНА. Закрывание LIMIT = %d, Время на закрывание = %d\n", TAP_ANGLE, timer_stop_to);
@@ -588,26 +580,12 @@ void mode_processing(void) {
             break;
     };
 }
-// Проверка на принадлежность диапазону
-void check_range(void) {
-    // Аппаратное ограничение закрытия крана по напряжению 2 вольта
-    if  ( TAP_ANGLE < prim_par.tap_angle ) TAP_ANGLE = prim_par.tap_angle;
-    // Вычисление ограничения закрытия крана TAP_ANGLE = tap_angle_min
-    if (UL_T < TA_IN_NOLIMIT)  tap_angle_min = prim_par.tap_angle + ((long int)((TA_IN_NOLIMIT - UL_T) * mode.k_angle_limit))/1000;
-    if (!mode.print) printf("Пересчет ограничения: %d, Ул. т :%d, Коэффициент :%i, ограничение снизу :%d, UL_T :%i  \r\n",  (TA_IN_NOLIMIT - UL_T), UL_T, mode.k_angle_limit,prim_par.tap_angle, UL_T);
-    if (TAP_ANGLE < tap_angle_min)
-        TAP_ANGLE = tap_angle_min;
-    else
-        if (TAP_ANGLE > PWM_MAX)
-            TAP_ANGLE = PWM_MAX;
-    // TAP_ANGLE - Состояние выхода на PWM
-}
 // Функция пропорционального регулирования
 void update_P(int error) {
     // TAP_ANGLE = TAP_ANGLE + error/100;          // TAP_ANGLE - Состояние выхода на PWM
     if ((TAP_ANGLE >=0) && (TAP_ANGLE <= PWM_MAX))
         TAP_ANGLE = TAP_ANGLE + ((error* prim_par.Ku)/1000);
-    check_range();
+    tap_angle_check_range();
     //if (mode.print == 2) printf("Разность температур: %d, Процент_ANGLE :%d, TAP_ANGLE:%d, ANGLE CALC:%d,KU:%d \r\n",  error, ((TAP_ANGLE*100)/0xFF),TAP_ANGLE,((error / 100) * prim_par.Ku),prim_par.Ku);
     if (!mode.print) printf("Разность температур: %d, Процент_ANGLE :%d, TAP_ANGLE:%d, ANGLE CALC:%d,KU:%d \r\n",  error, (((TAP_ANGLE -  prim_par.tap_angle)*100)/(PWM_MAX -  prim_par.tap_angle)),TAP_ANGLE,((error / 100) * prim_par.Ku),prim_par.Ku);
 }
