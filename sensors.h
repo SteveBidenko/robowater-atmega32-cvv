@@ -20,10 +20,10 @@
 #define NUM_KEYS 7
 // Глобальная переменная
 extern unsigned char t_key; // Для таймера
+extern unsigned char key_treated[7] ;
 // Описание функций
 void init_keys(void);       // Инициализация всех кнопок
 void poll_keys(void);       // Опрос всех кнопок
 void poll_key(unsigned char); // Опрос конкретной кнопки
 unsigned char key(unsigned char);
-extern unsigned char key_treated[7] ; 
 #endif

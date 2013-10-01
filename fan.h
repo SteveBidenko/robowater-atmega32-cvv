@@ -10,6 +10,9 @@
 #define FAN PORTD.4    // Порт.Пин вентилятора
 // Описание функций
 extern unsigned char check_fan_range(int value);  
+extern void winter_fan_speed(void);    // регулирование вентилятора зимой
 // Описание глобальных переменных
+extern byte timer_fan;
+extern byte count_fan;
 #endif
 

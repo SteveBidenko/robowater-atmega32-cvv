@@ -8,6 +8,7 @@
 #include "spd1820.h"
 #include "dayofweek.h"
 #include "sensors.h"
+#include "fan.h"
 #define NODEBUG
 // Описание модульных переменных
 unsigned int time_integration = 0;
@@ -15,8 +16,6 @@ unsigned char timer_start_to = 0;
 unsigned char timer_stop_to = 0;
 unsigned int timer_start = 0;
 unsigned char timer_stop = 0;
-unsigned char timer_fan = 0;
-unsigned char count_fan = 0;
 // Функция, делающая регуларный анализ значения термометров
 void regular_check_alarm_and_warnings(void) {
     // Проверка свитчиков
