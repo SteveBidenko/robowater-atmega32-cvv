@@ -19,7 +19,7 @@
 #include "fan.h"
 // Локальные макроподстановки
 #define MAJOR_VERSION 5
-#define MINOR_VERSION 7
+#define MINOR_VERSION 8
 // #define NODEBUG
 // enum
 // Определение главных структур
@@ -543,42 +543,6 @@ void mode_processing(void) {
         default:
 
     }
-    // Здесь поддерживаем режимы и ведем расчеты
-    switch (mode.run) {
-        case mo_stop:
-            time_integration = 0;
-            if (prim_par.season) {
-                keep_life_in_winter();
-            } else {
-                signal_white(OFF);
-                mode.pomp = 0;
-            }
-            signal_green(OFF);
-            time_cooling = 0;
-            //mode.cooling1 = 0;
-            //mode.cooling2 = 0;
-            break;
-        case mo_action:
-            signal_white(prim_par.season);
-            if (prim_par.season) {
-                winter_regulator();
-            } else {
-                coolant_regulator();
-            }
-            // Без регулятора скорости лапа задействована для охладителя
-            if (1 == 0) {
-                // update_PID(SET_T - POM_T, -5000, 5000); // Разница между T Уст и Т помещения
-                time_integration = prim_par.T_int;
-               //Внимание ОТКЛЮЧЕНО РЕГУЛИРОВАНИЕ СКОРОСТИ ВЕНТИЛЯТОРА!!!
-                if (prim_par.season && (UL_T < TA_IN_NOLIMIT)) {
-                   winter_fan_speed();
-                }
-            }
-            //signal_green(ON);
-            break;
-        default:
-            break;
-    };
 }
 // Функция пропорционального регулирования
 void update_P(int error) {
