@@ -19,7 +19,7 @@
 #include "fan.h"
 // Локальные макроподстановки
 #define MAJOR_VERSION 5
-#define MINOR_VERSION 8
+#define MINOR_VERSION 9
 // #define NODEBUG
 // enum
 // Определение главных структур
@@ -35,9 +35,10 @@ unsigned char key_treated[7] = {0,0,0,0,0,0,0} ;
 struct st_mode mode = {0, mo_stop, 0, 0, 0, 0, 1, 0.0,0,0,0};  // Текущий режим работы
 struct st_datetime s_dt;
 // Начальные установки структуры основных переменных
-struct st_eeprom_par prim_par={
-    48, 205, 0x7F, 0x00,                                   // П1=50,П2=50,П3=48
-    (int)10, (int)20, (int)10,
+struct st_eeprom_par prim_par = {
+    48, 205, 0x7F, 0x00,                // П1=50,П2=50,П3=48
+    100, 100,                           // int dt_winter, dt_summer;
+    (int)10, 0, 0,                      // int Ku, Ki, Kd;
     (int)180, (int)100,
     (int)1500, (int)5000,
     (int)-2000, (int)1000, (int)2200,
