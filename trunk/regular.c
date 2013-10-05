@@ -4,6 +4,7 @@
 #include "robowater.h"
 #include "signals.h"
 #include "regular.h"
+#include "season.h"
 #include "menu.h"
 #include "spd1820.h"
 #include "dayofweek.h"
@@ -118,6 +119,39 @@ void regular_inspection(void) {
         case 1: lcd_menu(0); break;
         default: ;
     }
+    // Здесь поддерживаем режимы и ведем расчеты
+    switch (mode.run) {
+        case mo_stop:
+            time_integration = 0;
+            if (prim_par.season) {
+                keep_life_in_winter();
+            } else {
+                signal_white(OFF);
+                mode.pomp = 0;
+            }
+            signal_green(OFF);
+            time_cooling = 0;
+            break;
+        case mo_action:
+            signal_white(prim_par.season);
+            if (prim_par.season) {
+                winter_regulator();
+            } else {
+                coolant_regulator();
+            }
+            // Без регулятора скорости лапа задействована для охладителя. Стоит заглушка.
+            if (1 == 0) {
+                // update_PID(SET_T - POM_T, -5000, 5000); // Разница между T Уст и Т помещения
+                time_integration = prim_par.T_int;
+               // Внимание ОТКЛЮЧЕНО РЕГУЛИРОВАНИЕ СКОРОСТИ ВЕНТИЛЯТОРА!!!
+                if (prim_par.season && (UL_T < TA_IN_NOLIMIT)) {
+                   winter_fan_speed();
+                }
+            }
+            break;
+        default:
+            break;
+    };
     // Если пора проводить ТО, то генерируем событие ev_begin_to
     if (high_time_TO()) {
         printf ("Пора проводить ТО\n");
