@@ -58,8 +58,8 @@ struct st_parameter settings[NUM_SETTINGS]={
     {30, e_stime, 1, 28},           // [4] время интегрирования лето T_z ?
     {10, e_stime, 1, 29},           // [5] время интегрирования зима T_int
     {1, e_coef, 1, 30},             // [6] Коэффициэнт усиления Ku
-    {0, e_coef, 1, 31},             // [7] Дельта лето Ki
-    {0, e_coef, 1, 32},             // [8] Дельта зима Kd
+    {0, e_coef, 1, 54},             // [7] Коэффициэнт Ki
+    {0, e_coef, 1, 55},             // [8] Коэффициэнт Kd
     {0, e_delete, 1, 35},           // [9] Отключение термометра 1
     {-1, e_address, 1, 36},         // [10] установка термометра 1
     {1, e_delete, 1, 37},           // [11] Отключение термометра 2
@@ -78,7 +78,9 @@ struct st_parameter settings[NUM_SETTINGS]={
     {250, e_ADC2, 1, 50},           // [24] Установка верхней границы ADC2
     {1, e_weekday, 1, 51},          // [25] Установка дня недели
     {0, e_hour, 1, 52},             // [26] Установка часа проведения ТО Крана
-    {0, e_minute, 1, 53}            // [27] Установка минуты проведения ТО Крана
+    {0, e_minute, 1, 53},           // [27] Установка минуты проведения ТО Крана
+    {0, e_temperature, 1, 31},      // [28] Дельта лето dt_summer;
+    {0, e_temperature, 1, 32}       // [29] Дельта зима dt_winter;
 };
 #define WARNING_POS 61
 struct st_parameter warnings[MAX_WARNINGS] = {
@@ -125,9 +127,9 @@ flash lcd_str all_menu_str[] = {
         "TA Min ",     // [26] TA_out_Min
         "ВР.Лето=",    // [27] T_z
         "ВР.Зима=",    // [28] T_int
-        "КУ=",         // [29]
-        "Дt Лето=",    // [30]
-        "Дt Зима=",     // [31]
+        "КУ=",         // [29] 
+        "Дt Лето=",    // [30] t_summer_sensitivity;
+        "Дt Зима=",     // [31] t_winter_sensitivity;
         "Сезон=",       // [32]
         "Пароль=",      // [33]
         "DEL Пом.",   // [34] Важен порядок следования, т.е. с 34 - по 41 должны идти 4 термомтера подряд
@@ -148,7 +150,9 @@ flash lcd_str all_menu_str[] = {
         "Вх2.сверху=",      // [49] Установление вых2 напряжение снизу
         "День ТО=",         // [50] День недели ТО
         "Час ТО=",          // [51] Установка часа проведения ТО Крана
-        "Минут ТО="         // [52] Установка минуты проведения ТО Крана
+        "Минут ТО=",        // [52] Установка минуты проведения ТО Крана
+        "Ki=",              // [53]
+        "Kd="               // [54]
 };
 char linestr[20];           // Строка для LCD
 bit need_eeprom_write;      // Флаг, если необходимо записать в EEPROM
@@ -181,6 +185,8 @@ void sync_set_par(byte sync) {
         settings[25].val_data = prim_par.TO.weekday;
         settings[26].val_data = prim_par.TO.hour;
         settings[27].val_data = prim_par.TO.minute;
+        settings[28].val_data = prim_par.dt_summer;
+        settings[29].val_data = prim_par.dt_winter;
 
         // Здесь будет разрешение/запрет на редактирование в меню
         for (i = 0; i < MAX_DS1820; i++) {
@@ -296,6 +302,12 @@ void sync_set_par(byte sync) {
             }
             if (prim_par.TO.minute != settings[27].val_data) {
                 prim_par.TO.minute = settings[27].val_data; need_eeprom_write = 1;
+            }
+            if (prim_par.dt_summer != settings[28].val_data) {
+                prim_par.dt_summer = settings[28].val_data; need_eeprom_write = 1;
+            }
+            if (prim_par.dt_winter != settings[29].val_data) { 
+                prim_par.dt_winter = settings[29].val_data; need_eeprom_write = 1;
             }
             // Проверяем часть меню, где идет управление термометрами
             for (i = 0; i < MAX_DS1820; i++) {

@@ -112,6 +112,7 @@ struct st_TO {
 // Структура основных переменных в системе
 extern struct st_eeprom_par {
     byte tap_angle, fan_speed, ADC1, ADC2;        // 0x7F, 205, 0x7F, 0x7F, [4]
+    int dt_winter, dt_summer;  
     int Ku, Ki, Kd;                             // 10, 0, 0 [6]
     int T_z, T_int;                             // 300, 100 [4] Время задержки, Время интегрирования
     int TW_out_Min, TW_out_Stop;                // 1500, 5000,

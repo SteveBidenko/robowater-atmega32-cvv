@@ -14,7 +14,7 @@ void coolant_regulator (void) {
     if (prim_par.season) return;   // защита от дурака-программиста
     // Для установок с водяным охладителем запускаем охладитель
     if (time_cooling == 0) {
-        //if (POM_T > (SET_T + (prim_par. Ki*10))) {
+        // if (POM_T > SET_T + prim_par.dt_summer) {
         if (UL_T > SET_T) {
             if (POM_T > SET_T) {
                 /* if ( mode.cooling1 == 0) {
@@ -28,7 +28,7 @@ void coolant_regulator (void) {
             }
         }
         //Остановка охладителя
-        if (POM_T < (SET_T - (prim_par. Ki*10)) || (UL_T < SET_T) )  {
+        if (POM_T < (SET_T - prim_par.dt_summer) || UL_T < SET_T) {
             /* if (mode.cooling1 == 1) {
                  mode.cooling1 = 0;
                  signal_green(SHORT);
@@ -36,7 +36,7 @@ void coolant_regulator (void) {
                  mode.cooling2 = 0;
                  signal_green(ON);
             } */
-            if (mode.print) printf("Отключен охладитель. Разность температур - дельта: %d, POM_T :%d\r\n",  (SET_T - (prim_par. Ki*10)), POM_T);
+            if (mode.print) printf("Отключен охладитель. Разность температур - дельта: %d, POM_T :%d\r\n",  (SET_T - prim_par.dt_summer), POM_T);
         }
         time_cooling = prim_par.T_z;
         /* time_cooling = TIME_COOLING_MAX;
@@ -98,11 +98,9 @@ void winter_regulator (void) {
     if (!prim_par.season) return;   // защита от дурака-программиста
     //  Простой алгоритм обработки
     if (time_integration == 0) {
-        if (POM_T < (SET_T - (prim_par. Kd*10)))  update_P(SET_T - POM_T);// Разница между T Уст и Т помещения
-        if (POM_T > (SET_T+(prim_par. Kd*10)))  update_P(SET_T - POM_T);// Разница между T Уст и Т помещения
+        if (abs(SET_T - POM_T) > prim_par.dt_winter) update_P(SET_T - POM_T);  
         time_integration = prim_par.T_int;
-        //mode.cooling1 = 0;
-        //mode.cooling2 = 0;
+        // mode.cooling2 = mode.cooling1 = 0;
         time_cooling = 0;
         signal_green(ON);
     }
