@@ -548,7 +548,7 @@ void mode_processing(void) {
 // Функция пропорционального регулирования
 void update_P(int error) {
     // TAP_ANGLE = TAP_ANGLE + error/100;          // TAP_ANGLE - Состояние выхода на PWM
-    if ((TAP_ANGLE >=0) && (TAP_ANGLE <= PWM_MAX))
+    if ((TAP_ANGLE >= prim_par.PWM1_lo) && (TAP_ANGLE <= prim_par.PWM1_hi))
         TAP_ANGLE = TAP_ANGLE + ((error* prim_par.Ku)/1000);
     tap_angle_check_range();
     //if (mode.print == 2) printf("Разность температур: %d, Процент_ANGLE :%d, TAP_ANGLE:%d, ANGLE CALC:%d,KU:%d \r\n",  error, ((TAP_ANGLE*100)/0xFF),TAP_ANGLE,((error / 100) * prim_par.Ku),prim_par.Ku);

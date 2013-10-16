@@ -112,18 +112,19 @@ void tap_angle_check_range(void) {
 
     tmp_delta = abs(prim_par.TA_in_Min) + TA_IN_NOLIMIT;  // вычисление диапазона работы ограничителя крана по температуре
     mode.k_angle_limit = ((TAP_ANGLE_LIMIT * 1000) / tmp_delta); // вычисление коэффициента ограничения крана для заданных настроек
-    // Аппаратное ограничение закрытия крана по напряжению 2 вольта
-    if (TAP_ANGLE < prim_par.tap_angle) TAP_ANGLE = prim_par.tap_angle;
+   
     // Вычисление ограничения закрытия крана TAP_ANGLE = tap_angle_min
     if (UL_T < TA_IN_NOLIMIT) {
         // вычисление ограничения крана по температуре воздуха на входе и коэффициенту mode.k_angle_limit
-        tap_angle_min = prim_par.tap_angle + ((long int)((TA_IN_NOLIMIT - UL_T) * mode.k_angle_limit)) / 1000;
+        tap_angle_min = prim_par.PWM1_lo + ((long int)((TA_IN_NOLIMIT - UL_T) * mode.k_angle_limit)) / 1000;
         if (mode.print) printf(" tap_angle_min %u .   Kоэффициент :%d\r\n",  tap_angle_min, mode.k_angle_limit);
     }
+    // Аппаратное ограничение закрытия крана по напряжению 2 вольта
+    if (TAP_ANGLE <= prim_par.PWM1_lo) TAP_ANGLE = prim_par.PWM1_lo;
     if (mode.print) printf("Пересчет ограничения: %d, Ул. т :%d, Коэффициент :%i, ограничение снизу :%d, UL_T :%i  \r\n",  (TA_IN_NOLIMIT - UL_T), UL_T, mode.k_angle_limit,prim_par.tap_angle, UL_T);
     if (TAP_ANGLE < tap_angle_min)
         TAP_ANGLE = tap_angle_min;
     else
-        if (TAP_ANGLE > PWM_MAX) TAP_ANGLE = PWM_MAX;
+        if (TAP_ANGLE >= prim_par.PWM1_hi) TAP_ANGLE = prim_par.PWM1_hi;
     if (mode.print) printf(" Установка крана %u . prim_par.tap_angle :%d\r\n", TAP_ANGLE, prim_par.tap_angle);
 }
