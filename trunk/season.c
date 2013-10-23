@@ -15,11 +15,12 @@
 struct PID_DATA pidData;
 #else
 // Функция пропорционального регулирования
-void update_P(int error) {
+void update_P(signed short setPoint, signed short processValue) {
+    int error;
+    error = setPoint - processValue;
     // TAP_ANGLE = TAP_ANGLE + error/100;          // TAP_ANGLE - Состояние выхода на PWM
     if ((TAP_ANGLE >= prim_par.PWM1_lo) && (TAP_ANGLE <= prim_par.PWM1_hi))
         TAP_ANGLE = TAP_ANGLE + (((error* prim_par.Ku)/prim_par.PWM1_lo)*prim_par.PWM1_hi)/100;
-    tap_angle_check_range(DUTY_MODE);
     //if (mode.print == 2) printf("Разность температур: %d, Процент_ANGLE :%d, TAP_ANGLE:%d, ANGLE CALC:%d,KU:%d \r\n",  error, ((TAP_ANGLE*100)/0xFF),TAP_ANGLE,((error / 100) * prim_par.Ku),prim_par.Ku);
     if (!mode.print) printf("Разность температур: %d, Процент_ANGLE :%d, TAP_ANGLE:%d, ANGLE CALC:%d,KU:%d \r\n",  error, (((TAP_ANGLE -  prim_par.PWM1_lo)*100)/(prim_par.PWM1_hi -  prim_par.PWM1_lo)),TAP_ANGLE,((error / 100) * prim_par.Ku),prim_par.Ku);
 }
@@ -115,10 +116,10 @@ void winter_regulator (void) {
     if (time_integration == 0) {
         #ifdef PID_H
         TAP_ANGLE = pid_Controller(SET_T, POM_T, &pidData);
-        tap_angle_check_range(DUTY_MODE);
         #else
-        if (abs(SET_T - POM_T) > prim_par.dt_winter) update_P(SET_T - POM_T);
+        if (abs(SET_T - POM_T) > prim_par.dt_winter) update_P(SET_T, POM_T);
         #endif  
+        tap_angle_check_range(DUTY_MODE);
         time_integration = prim_par.T_int;
         // mode.cooling2 = mode.cooling1 = 0;
         time_cooling = 0;
