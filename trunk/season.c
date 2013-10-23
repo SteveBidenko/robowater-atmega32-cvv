@@ -17,12 +17,14 @@ struct PID_DATA pidData;
 // Функция пропорционального регулирования
 void update_P(signed short setPoint, signed short processValue) {
     int error;
+    long int coefficient;
+    long int effect;
     error = setPoint - processValue;
-    // TAP_ANGLE = TAP_ANGLE + error/100;          // TAP_ANGLE - Состояние выхода на PWM
     if ((TAP_ANGLE >= prim_par.PWM1_lo) && (TAP_ANGLE <= prim_par.PWM1_hi))
-        TAP_ANGLE = TAP_ANGLE + (((error* prim_par.Ku)/prim_par.PWM1_lo)*prim_par.PWM1_hi)/100;
-    //if (mode.print == 2) printf("Разность температур: %d, Процент_ANGLE :%d, TAP_ANGLE:%d, ANGLE CALC:%d,KU:%d \r\n",  error, ((TAP_ANGLE*100)/0xFF),TAP_ANGLE,((error / 100) * prim_par.Ku),prim_par.Ku);
-    if (mode.print) printf("Разность температур: %d, Процент_ANGLE :%d, TAP_ANGLE:%d, ANGLE CALC:%d,KU:%d \r\n",  error, (((TAP_ANGLE -  prim_par.PWM1_lo)*100)/(prim_par.PWM1_hi -  prim_par.PWM1_lo)),TAP_ANGLE,((error / 100) * prim_par.Ku),prim_par.Ku);
+        coefficient =(long int) prim_par.Ku * (long int) (prim_par.PWM1_hi - prim_par.PWM1_lo) / 1000;
+        effect = (error * coefficient) / 100;
+        TAP_ANGLE = TAP_ANGLE + effect;
+    //if (!mode.print) printf("Разность температур: %d, Процент_ANGLE :%d, TAP_ANGLE:%d, effect:%d, coefficient:%d \r\n",  error, (((TAP_ANGLE -  prim_par.PWM1_lo)*100)/(prim_par.PWM1_hi -  prim_par.PWM1_lo)),TAP_ANGLE,effect,coefficient);
 }
 #endif
 // Подпрограмма регулирования охладителя (не зимой)
@@ -130,14 +132,12 @@ void winter_regulator (void) {
 void tap_angle_check_range(unsigned char check_mode) {
     int tmp_delta;
     unsigned char tap_angle_min = 0;   // Ограничение крана снизу от температуры
-
     tmp_delta = check_mode;             // Убираем предупреждения компилятора, если используем П-регулирование 
     #ifdef PID_H
     if (check_mode == INIT_MODE) pid_Init(prim_par.Ku * SCALING_FACTOR, prim_par.Ki * SCALING_FACTOR , prim_par.Kd * SCALING_FACTOR , &pidData); 
     #endif
     tmp_delta = abs(prim_par.TA_in_Min) + TA_IN_NOLIMIT;  // вычисление диапазона работы ограничителя крана по температуре
-    mode.k_angle_limit = ((TAP_ANGLE_LIMIT * 1000) / tmp_delta); // вычисление коэффициента ограничения крана для заданных настроек
-   
+    mode.k_angle_limit = ((TAP_ANGLE_LIMIT * 1000) / tmp_delta); // вычисление коэффициента ограничения крана для заданных настроек   
     // Вычисление ограничения закрытия крана TAP_ANGLE = tap_angle_min
     if (UL_T < TA_IN_NOLIMIT) {
         // вычисление ограничения крана по температуре воздуха на входе и коэффициенту mode.k_angle_limit
@@ -146,10 +146,10 @@ void tap_angle_check_range(unsigned char check_mode) {
     }
     // Аппаратное ограничение закрытия крана по напряжению 2 вольта
     if (TAP_ANGLE <= prim_par.PWM1_lo) TAP_ANGLE = prim_par.PWM1_lo;
-    if (mode.print) printf("Пересчет ограничения: %d, Ул. т :%d, Коэффициент :%i, ограничение снизу :%d, UL_T :%i  \r\n",  (TA_IN_NOLIMIT - UL_T), UL_T, mode.k_angle_limit,prim_par.tap_angle, UL_T);
+    if (mode.print) printf("Пересчет ограничения: %d, Ул. т :%d, Коэффициент :%i, ограничение снизу :%d, UL_T :%i  \r\n",  (TA_IN_NOLIMIT - UL_T), UL_T, mode.k_angle_limit, tap_angle_min, UL_T);
     if (TAP_ANGLE < tap_angle_min)
         TAP_ANGLE = tap_angle_min;
     else
         if (TAP_ANGLE >= prim_par.PWM1_hi) TAP_ANGLE = prim_par.PWM1_hi;
-    if (mode.print) printf(" Установка крана %u . prim_par.tap_angle :%d\r\n", TAP_ANGLE, prim_par.tap_angle);
+    if (mode.print) printf(" Установка крана %u .prim_par.PWM1_lo :%d\r\n", TAP_ANGLE,  prim_par.PWM1_lo);
 }

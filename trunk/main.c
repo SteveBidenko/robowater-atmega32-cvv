@@ -313,7 +313,7 @@ void event_processing(void) {
                         timer_start = TIME_START;
                         //timer_start = prim_par.T_z; // TIMER_INACTIVE  ...Запускаем таймер STRT
                         TAP_ANGLE = PWM_MAX;
-                        printf("Включен режим Прогрев. LIMIT = %d\r\n", mode.k_angle_limit);
+                        printf("Включен режим Прогрев. Время прогрева = %d\r\n", timer_start);
                         signal_green(SHORT);
                     } else {
                         signal_white(OFF);
@@ -332,7 +332,7 @@ void event_processing(void) {
                     break; // mo_stop
                 case mo_warming_up:
                     signal_buz(SHORT);
-                    if (mode.print) printf("Режим Прогрев.\r\n");
+                    if (mode.print) printf("Режим Прогрев. Время прогрева = %d\r\n", timer_start);
                     break; // mo_warming_up
                 case mo_action: signal_buz(SHORT);
                     if (mode.print) printf("Режим Пуск.\r\n");
