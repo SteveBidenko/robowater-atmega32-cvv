@@ -19,7 +19,7 @@
 #include "fan.h"
 // Локальные макроподстановки
 #define MAJOR_VERSION 5
-#define MINOR_VERSION 9
+#define MINOR_VERSION 10
 // #define NODEBUG
 // enum
 // Определение главных структур
@@ -192,7 +192,7 @@ void main(void) {
     FAN_SPEED = check_fan_range(prim_par.fan_speed);
     link_terms();
     // Вычисляем значение крана по наружной температуре
-    tap_angle_check_range();
+    tap_angle_check_range(INIT_MODE);
     while(1) {
         // ВНИМАНИЕ! НИЖЕ ДО ОКОНЧАНИЯ ЦИКЛА WHILE КОД НЕ ДОБАВЛЯТЬ!!!
         check_serial();
@@ -545,51 +545,6 @@ void mode_processing(void) {
 
     }
 }
-// Функция пропорционального регулирования
-void update_P(int error) {
-    // TAP_ANGLE = TAP_ANGLE + error/100;          // TAP_ANGLE - Состояние выхода на PWM
-    if ((TAP_ANGLE >= prim_par.PWM1_lo) && (TAP_ANGLE <= prim_par.PWM1_hi))
-        TAP_ANGLE = TAP_ANGLE + ((error* prim_par.Ku)/1000);
-    tap_angle_check_range();
-    //if (mode.print == 2) printf("Разность температур: %d, Процент_ANGLE :%d, TAP_ANGLE:%d, ANGLE CALC:%d,KU:%d \r\n",  error, ((TAP_ANGLE*100)/0xFF),TAP_ANGLE,((error / 100) * prim_par.Ku),prim_par.Ku);
-    if (!mode.print) printf("Разность температур: %d, Процент_ANGLE :%d, TAP_ANGLE:%d, ANGLE CALC:%d,KU:%d \r\n",  error, (((TAP_ANGLE -  prim_par.tap_angle)*100)/(PWM_MAX -  prim_par.tap_angle)),TAP_ANGLE,((error / 100) * prim_par.Ku),prim_par.Ku);
-}
-/*
-void update_PID(int error, int iMin, int iMax) {
-    static int dState = 0, iState = 0;
-    int pTerm, dTerm, iTerm;
-    int result;
-
-    pTerm = (prim_par.Ku * error) / 10;    // calculate the proportional term
-    iState += error;                // calculate the integral state with appropriate limiting
-    // Проверяем на принадлежность диапазону
-
-        if ((iState > iMax) || (iState < iMin)) {
-            if (iState > iMax)
-                iState = iMax;
-            else
-                iState = iMin;
-        }
-        iTerm = (prim_par.Ki * iState) / 100;    // calculate the integral term
-        dTerm = prim_par.Kd * (POM_T - dState);
-        dState = POM_T;
-        result = pTerm + iTerm - dTerm;
-        TAP_ANGLE += result / 100;
-        check_range();
-
-    if (!mode.print)
-    // Температура заданная, Температура измеренная, Delta, Угол крана расчетный, Угол кранаизмеренный, Угол ограничения, result, pTerm, iTerm, dTerm, Обороты расчетные,Обороты измеренныее\r\n"
-        printf("%02u:%02u:%02u, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d\r\n",
-            s_dt.cHH, s_dt.cMM, s_dt.cSS,
-            SET_T, POM_T, error,
-            TAP_ANGLE, ADC_VAR1, tap_angle_min, result,
-            pTerm, iTerm, dTerm,
-            FAN_SPEED, ADC_VAR2);
-    else
-        printf("Delta (x100) = %d, result = %d, TAP_ANGLE = %d, pTerm = %d, iTerm = %d, dTerm = %d\r\n",
-            error, result, TAP_ANGLE, pTerm, iTerm, dTerm, POM_T);
-}
-*/
 // Печать всех термометров. mode - режим печати адресов термометров. Если не 0 - печатать адреса.
 void printallterms(unsigned char print_addr) {
     int term;

@@ -7,8 +7,23 @@
 #include "season.h"
 #include "menu.h"
 #include "regular.h"
+//#include "pid.h"            // Если будет закомментировано, то будет использовано пропорциональное регулирование
+// Описание макроподстановок
 // Описание модульных переменных
 //unsigned int time_integration = 0;
+#ifdef PID_H
+struct PID_DATA pidData;
+#else
+// Функция пропорционального регулирования
+void update_P(int error) {
+    // TAP_ANGLE = TAP_ANGLE + error/100;          // TAP_ANGLE - Состояние выхода на PWM
+    if ((TAP_ANGLE >= prim_par.PWM1_lo) && (TAP_ANGLE <= prim_par.PWM1_hi))
+        TAP_ANGLE = TAP_ANGLE + (((error* prim_par.Ku)/prim_par.PWM1_lo)*prim_par.PWM1_hi)/100;
+    tap_angle_check_range(DUTY_MODE);
+    //if (mode.print == 2) printf("Разность температур: %d, Процент_ANGLE :%d, TAP_ANGLE:%d, ANGLE CALC:%d,KU:%d \r\n",  error, ((TAP_ANGLE*100)/0xFF),TAP_ANGLE,((error / 100) * prim_par.Ku),prim_par.Ku);
+    if (!mode.print) printf("Разность температур: %d, Процент_ANGLE :%d, TAP_ANGLE:%d, ANGLE CALC:%d,KU:%d \r\n",  error, (((TAP_ANGLE -  prim_par.PWM1_lo)*100)/(prim_par.PWM1_hi -  prim_par.PWM1_lo)),TAP_ANGLE,((error / 100) * prim_par.Ku),prim_par.Ku);
+}
+#endif
 // Подпрограмма регулирования охладителя (не зимой)
 void coolant_regulator (void) {
     if (prim_par.season) return;   // защита от дурака-программиста
@@ -51,7 +66,7 @@ void keep_life_in_winter(void) {
     int water_out_bound;
     int water_out_bound_1;
 
-    if (prim_par.season) { tap_angle_check_range(); } else { return; }  // защита от дурака-программиста
+    if (prim_par.season) tap_angle_check_range(DUTY_MODE); else return; // защита от дурака-программиста
     // Процесс поддержания температуры калорифера в режиме СТОП Зимой
     error_w_stop = (prim_par.TW_out_Stop - WOUT_T)/100;
     water_out_bound = prim_par.TW_out_Stop - 200;
@@ -61,7 +76,7 @@ void keep_life_in_winter(void) {
         timer_fan = TIME_COOL_STOP;
         // forcheck_event = ev_pomp;
         TAP_ANGLE = TAP_ANGLE + error_w_stop;
-        tap_angle_check_range();
+        tap_angle_check_range(DUTY_MODE);
         if (WOUT_T < water_out_bound_1) {
             // if (mode.print) printf("Разогрев калорифера: %d, Угол крана расчетный :%d, Угол крана измеренный :%d, угол ограничения: %d, t обратки :%d  \r\n",  error_w_stop, TAP_ANGLE, ADC_VAR1, tap_angle_min, WOUT_T/10);
             signal_white(LONG);
@@ -77,7 +92,7 @@ void keep_life_in_winter(void) {
     water_out_bound_1 = prim_par.TW_out_Stop + 500;
     if ((WOUT_T > water_out_bound) && (timer_fan == 0)) {
         timer_fan = TIME_COOL_STOP;
-        tap_angle_check_range();
+        tap_angle_check_range(DUTY_MODE);
         if ((WOUT_T >= water_out_bound) && (mode.pomp == 1)) {
             //if (mode.print) printf("Охлаждение калорифера: %d, Угол крана расчетный :%d, Угол крана измеренный :%d, t обратки :%d  \r\n",  error_w_stop, TAP_ANGLE, ADC_VAR1, WOUT_T/10);
             signal_white(ON);
@@ -98,7 +113,12 @@ void winter_regulator (void) {
     if (!prim_par.season) return;   // защита от дурака-программиста
     //  Простой алгоритм обработки
     if (time_integration == 0) {
-        if (abs(SET_T - POM_T) > prim_par.dt_winter) update_P(SET_T - POM_T);  
+        #ifdef PID_H
+        TAP_ANGLE = pid_Controller(SET_T, POM_T, &pidData);
+        tap_angle_check_range(DUTY_MODE);
+        #else
+        if (abs(SET_T - POM_T) > prim_par.dt_winter) update_P(SET_T - POM_T);
+        #endif  
         time_integration = prim_par.T_int;
         // mode.cooling2 = mode.cooling1 = 0;
         time_cooling = 0;
@@ -106,10 +126,14 @@ void winter_regulator (void) {
     }
 }
 // Проверка TAP_ANGLE на принадлежность диапазону
-void tap_angle_check_range(void) {
+void tap_angle_check_range(unsigned char check_mode) {
     int tmp_delta;
     unsigned char tap_angle_min = 0;   // Ограничение крана снизу от температуры
 
+    tmp_delta = check_mode;             // Убираем предупреждения компилятора, если используем П-регулирование 
+    #ifdef PID_H
+    if (check_mode == INIT_MODE) pid_Init(prim_par.Ku * SCALING_FACTOR, prim_par.Ki * SCALING_FACTOR , prim_par.Kd * SCALING_FACTOR , &pidData); 
+    #endif
     tmp_delta = abs(prim_par.TA_in_Min) + TA_IN_NOLIMIT;  // вычисление диапазона работы ограничителя крана по температуре
     mode.k_angle_limit = ((TAP_ANGLE_LIMIT * 1000) / tmp_delta); // вычисление коэффициента ограничения крана для заданных настроек
    

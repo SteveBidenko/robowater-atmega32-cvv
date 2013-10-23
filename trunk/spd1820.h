@@ -17,8 +17,6 @@
 #define DS1820_ALL_DELAY 200   // изменение с 700
 #define OUR_SIGNATURE -69
 #define DELTA_MAX 1000
-#define INIT_MODE 1
-#define DUTY_MODE 0
 #define NOT_FOUND -9999
 #define NOT_CLEAR -9998
 #define ADDR_LEN 9

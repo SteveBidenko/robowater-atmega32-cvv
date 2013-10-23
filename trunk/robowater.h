@@ -54,8 +54,10 @@
 // Чтение температуры (аргумент - номер термометра начиная с 0)
 #define read_term(num) termometers[num].t
 #define TIM1_COUNT 52767 // 61845
-#define INITMODE 8
+#define INITMODE 8                // Для запуска системы из меню 
 #define T_TO 180                  // Время открытия - закрытия крана то
+#define INIT_MODE 1
+#define DUTY_MODE 0
 
 // Описание типов переменных
 typedef unsigned char 	byte;	// byte = unsigned char
@@ -150,8 +152,6 @@ extern void init(void);
 extern void set_cur_dt (void);
 extern void get_cur_dt (unsigned char);
 extern unsigned int read_adc(unsigned char adc_input);  // Read the AD conversion result
-extern void update_P(int);
-//void update_PID(int error, int iMin, int iMax);
 // Описание глобальных переменных
 extern struct st_datetime s_dt;
 extern struct st_mode mode;
