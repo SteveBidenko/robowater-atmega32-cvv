@@ -18,7 +18,7 @@ typedef struct PID_DATA{
 // Объявление внешних данных
 // Объявление функций 
 void pid_Init(signed short p_factor, signed short i_factor, signed short d_factor, struct PID_DATA *pid);
+signed short update_P(signed short setPoint, signed short processValue, unsigned char p_factor, unsigned int range);
 signed short pid_Controller(signed short setPoint, signed short processValue, struct PID_DATA *pid); // pid was pid_st
 // void pid_Reset_Integrator(struct PID_DATA *pid); // pid was pid_st
-//void update_PID(int error, int iMin, int iMax);
 #endif

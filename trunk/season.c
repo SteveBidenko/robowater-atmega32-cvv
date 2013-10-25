@@ -7,26 +7,11 @@
 #include "season.h"
 #include "menu.h"
 #include "regular.h"
-//#include "pid.h"            // Если будет закомментировано, то будет использовано пропорциональное регулирование
+#include "pid.h"
 // Описание макроподстановок
 // Описание модульных переменных
 //unsigned int time_integration = 0;
-#ifdef PID_H
 struct PID_DATA pidData;
-#else
-// Функция пропорционального регулирования
-void update_P(signed short setPoint, signed short processValue) {
-    int error;
-    long int coefficient;
-    long int effect;
-    error = setPoint - processValue;
-    if ((TAP_ANGLE >= prim_par.PWM1_lo) && (TAP_ANGLE <= prim_par.PWM1_hi))
-        coefficient =(long int) prim_par.Ku * (long int) (prim_par.PWM1_hi - prim_par.PWM1_lo) / 1000;
-        effect = (error * coefficient) / 100;
-        TAP_ANGLE = TAP_ANGLE + effect;
-    //if (!mode.print) printf("Разность температур: %d, Процент_ANGLE :%d, TAP_ANGLE:%d, effect:%d, coefficient:%d \r\n",  error, (((TAP_ANGLE -  prim_par.PWM1_lo)*100)/(prim_par.PWM1_hi -  prim_par.PWM1_lo)),TAP_ANGLE,effect,coefficient);
-}
-#endif
 // Подпрограмма регулирования охладителя (не зимой)
 void coolant_regulator (void) {
     if (prim_par.season) return;   // защита от дурака-программиста
@@ -114,13 +99,17 @@ void keep_life_in_winter(void) {
 // Подпрограмма регулирования калорифера зимой
 void winter_regulator (void) {
     if (!prim_par.season) return;   // защита от дурака-программиста
-    //  Простой алгоритм обработки
+    //  Вызываем функции регулирования только, если пришло время
     if (time_integration == 0) {
-        #ifdef PID_H
-        TAP_ANGLE = pid_Controller(SET_T, POM_T, &pidData);
-        #else
-        if (abs(SET_T - POM_T) > prim_par.dt_winter) update_P(SET_T, POM_T);
-        #endif  
+        if ((prim_par.Ki == 0) && (prim_par.Kd == 0)) {
+            if (abs(SET_T - POM_T) > prim_par.dt_winter) {
+                TAP_ANGLE += update_P(SET_T, POM_T, prim_par.Ku, prim_par.PWM1_hi - prim_par.PWM1_lo);
+                printf("П регулирование. TAP_ANGLE = %d\r\n", TAP_ANGLE); 
+            }
+        } else {
+            TAP_ANGLE += pid_Controller(SET_T, POM_T, &pidData);
+            printf("ПИД регулирование. TAP_ANGLE = %d\r\n", TAP_ANGLE); 
+        } 
         tap_angle_check_range(DUTY_MODE);
         time_integration = prim_par.T_int;
         // mode.cooling2 = mode.cooling1 = 0;
