@@ -19,7 +19,7 @@
 #include "fan.h"
 // Локальные макроподстановки
 #define MAJOR_VERSION 5
-#define MINOR_VERSION 11
+#define MINOR_VERSION 12
 // #define NODEBUG
 // enum
 // Определение главных структур

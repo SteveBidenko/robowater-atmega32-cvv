@@ -141,8 +141,6 @@ void regular_inspection(void) {
             }
             // Без регулятора скорости лапа задействована для охладителя. Стоит заглушка.
             if (1 == 0) {
-                // update_PID(SET_T - POM_T, -5000, 5000); // Разница между T Уст и Т помещения
-                time_integration = prim_par.T_int;
                // Внимание ОТКЛЮЧЕНО РЕГУЛИРОВАНИЕ СКОРОСТИ ВЕНТИЛЯТОРА!!!
                 if (prim_par.season && (UL_T < TA_IN_NOLIMIT)) {
                    winter_fan_speed();

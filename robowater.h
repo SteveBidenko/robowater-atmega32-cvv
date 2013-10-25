@@ -30,7 +30,7 @@
 #define FORCE_INIT 1
 #define ALL_WARNINGS 12
 #define ENTER_CANCEL_OVERFLOW 2      // Задается в кол-ве полсекундных интервалов
-#define TIME_START 180                // Время старта Задается в кол-ве секундных интервалов
+#define TIME_START 10                // Время старта Задается в кол-ве секундных интервалов (was 180)
 #define TIME_STOP 10                 // Время остановки Задается в кол-ве секундных интервалов
 #define TIME_COOL_STOP 60            // Время таймаута для регулировки температуры калорифера в режиме СТОП
 #define TIME_BUZ1 1                  // Время Звука 1

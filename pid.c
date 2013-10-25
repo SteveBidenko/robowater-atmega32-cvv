@@ -1,5 +1,17 @@
 #include "pid.h"
 
+// Функция пропорционального регулирования
+signed short update_P(signed short setPoint, signed short processValue, unsigned char p_factor, unsigned int range) {
+    int error;
+    long int coefficient = 0;
+    signed short ret; 
+
+    error = setPoint - processValue;
+    coefficient = (long int) range * p_factor / 1000;
+    ret = coefficient * (error / 100) ;
+    // printf("Разность температур: %d, coefficient: %d, воздействие: %d\r\n", error, coefficient, ret);
+    return (ret);
+}
 // Set up PID controller parameters
 void pid_Init(signed short p_factor, signed short i_factor, signed short d_factor, struct PID_DATA *pid) {
     pid->lastProcessValue = pid->sumError = 0;    // Start values for PID controller
