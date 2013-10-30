@@ -19,7 +19,7 @@
 #include "fan.h"
 // Локальные макроподстановки
 #define MAJOR_VERSION 5
-#define MINOR_VERSION 12
+#define MINOR_VERSION 14
 // #define NODEBUG
 // enum
 // Определение главных структур
@@ -536,10 +536,10 @@ void mode_processing(void) {
         case mo_setup_input2:
             break;
         case mo_setup_output1:
-            OCR0 = menu_value;
+            OCR0 = (unsigned char)menu_value;
             break;
         case mo_setup_output2:
-            OCR2 = menu_value;
+            OCR2 = (unsigned char)menu_value;
             break;
         default:
 
