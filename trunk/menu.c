@@ -132,27 +132,27 @@ flash lcd_str all_menu_str[] = {
         "Дt Зима=",     // [31] t_winter_sensitivity;
         "Сезон=",       // [32]
         "Пароль=",      // [33]
-        "DEL Пом.",   // [34] Важен порядок следования, т.е. с 34 - по 41 должны идти 4 термомтера подряд
-        "SET Пом.",   // [35]
-        "DEL Ул.",    // [36]
-        "SET Ул.",    // [37]
-        "DEL WIn",    // [38]
-        "SET WIn",    // [39]
-        "DEL WOut",   // [40]
-        "SET WOut",   // [41]
-        "Вых1.снизу=",      // [42] Установление вых1 напряжение снизу
-        "Вых1.сверху=",     // [43] Установление вых1 напряжение снизу
-        "Вх1.снизу=",       // [44] Установление вых1 напряжение снизу
-        "Вх1.сверху=",      // [45] Установление вых1 напряжение снизу
-        "Вых2.снизу=",      // [46] Установление вых2 напряжение снизу
-        "Вых2.сверху=",     // [47] Установление вых2 напряжение снизу
-        "Вх2.снизу= ",       // [48] Установление вых2 напряжение снизу
-        "Вх2.сверху=",      // [49] Установление вых2 напряжение снизу
-        "День ТО=",         // [50] День недели ТО
-        "Час ТО=",          // [51] Установка часа проведения ТО Крана
-        "Минут ТО=",        // [52] Установка минуты проведения ТО Крана
-        "Ki=",              // [53]
-        "Kd="               // [54]
+        "DEL Пом.",     // [34] Важен порядок следования, т.е. с 34 - по 41 должны идти 4 термомтера подряд
+        "SET Пом.",     // [35]
+        "DEL Ул.",      // [36]
+        "SET Ул.",      // [37]
+        "DEL WIn",      // [38]
+        "SET WIn",      // [39]
+        "DEL WOut",     // [40]
+        "SET WOut",     // [41]
+        "Вых1.сн.=",    // [42] Установление вых1 напряжение снизу
+        "Вых1.св.=",    // [43] Установление вых1 напряжение сверху
+        "Вх1.сн.=",     // [44] Установление вх1 напряжение снизу
+        "Вх1.св.=",     // [45] Установление вх1 напряжение сверху
+        "Вых2.сн.=",    // [46] Установление вых2 напряжение снизу
+        "Вых2.св.=",    // [47] Установление вых2 напряжение сверху
+        "Вх2.сн.= ",    // [48] Установление вх2 напряжение снизу
+        "Вх2.св.=",     // [49] Установление вх2 напряжение сверху
+        "День ТО=",     // [50] День недели ТО
+        "Час ТО=",      // [51] Установка часа проведения ТО Крана
+        "Минут ТО=",    // [52] Установка минуты проведения ТО Крана
+        "Ki=",          // [53]
+        "Kd="           // [54]
 };
 char linestr[20];           // Строка для LCD
 bit need_eeprom_write;      // Флаг, если необходимо записать в EEPROM
@@ -677,7 +677,7 @@ void lcd_esc_edit(void) {
     // Перенесен блок в lcd_init_edit
     lmenu = &(curr_menu.menu)[num_line];
     // Если не нулевой уровень и нажата кнопка Cancel или ev_timer
-    // printf("INIT EDIT(%d): %s = %i-->%i [%u]\r\n", initmode, lmenu->val_name, curr_menu.val_data, lmenu->val_data, curr_menu.level);
+    // if (mode.print) printf("ESC EDIT: %s = %i-->%i [%u]\r\n", lmenu->val_name, curr_menu.val_data, lmenu->val_data, curr_menu.level);
     if (curr_menu.level || mode.stop_sync_dt) {
         // printf ("Вход в меню main_menu \r\n"); // Синхронизация по выходу
         if (mode.stop_sync_dt)
@@ -690,7 +690,6 @@ void lcd_esc_edit(void) {
     }
     // Перенесен блок в lcd_init_edit
     curr_menu.par = lmenu;
-    // printf("INIT EDIT(%d): %s = %i [%i]\r\n", initmode, lmenu->val_name, lmenu->val_data, curr_menu.val_data);
     curr_menu.val_data = 0;
     lcd_menu(0);
     return;
@@ -758,20 +757,24 @@ void lcd_edit(signed char direction) {
             if (curr_menu.val_data <= prim_par.tap_angle) curr_menu.val_data = prim_par.tap_angle;
             break;
         case e_ADC1: // перенес из boiler-control 15.05.2013
+            if ((unsigned char)mode.run <= 4) mode.lastrun = mode.run; 
             mode.run = mo_setup_input1;
             curr_menu.val_data = ADC_VAR1;
             break;
         case e_ADC2:
+            if ((unsigned char)mode.run <= 4) mode.lastrun = mode.run; 
             mode.run = mo_setup_input2;
             curr_menu.val_data = ADC_VAR2;
             break;
         case e_PWM1:
+            if ((unsigned char)mode.run <= 4) mode.lastrun = mode.run; 
             mode.run = mo_setup_output1;
             curr_menu.val_data += direction;
             if (curr_menu.val_data < 0 ) curr_menu.val_data = 0;
             if (curr_menu.val_data > 0xFF) curr_menu.val_data = 0xFF;
             break;
         case e_PWM2:
+            if ((unsigned char)mode.run <= 4) mode.lastrun = mode.run; 
             mode.run = mo_setup_output2;
             curr_menu.val_data += direction;
             if (curr_menu.val_data < 0 ) curr_menu.val_data = 0;

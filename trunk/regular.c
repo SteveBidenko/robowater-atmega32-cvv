@@ -147,6 +147,12 @@ void regular_inspection(void) {
                 }
             }
             break;
+        case mo_setup_input1:
+        case mo_setup_input2:
+        case mo_setup_output1:
+        case mo_setup_output2:
+            if (mode.menu == 0) mode.run = mode.lastrun;    // Если вышли из меню, пытаемся восстановить последний режим
+            break;
         default:
             break;
     };
@@ -216,7 +222,7 @@ void lcd_primary_screen(void) {
         case mo_warming_down:   sprintf(run_mod, "ОСТАН"); break;
         case mo_action:         sprintf(run_mod, "ПУСК "); break;
         case mo_to:             sprintf(run_mod, "ТО   "); break;
-        default: break;
+        default:                sprintf(run_mod, "ИНЖЕН"); break; 
     };
     if (c_warnings)
         sprintf(run_mod, "Авария ");
