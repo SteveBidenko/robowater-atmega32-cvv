@@ -348,7 +348,8 @@ void event_processing(void) {
                 case mo_stop: signal_buz(SHORT); time_integration = 0;
                     if (mode.print) printf(" Режим СТОП.\r\n");
                     break; // mo_stop
-                case mo_warming_up: mode.run = mo_warming_down;
+                case mo_warming_up: 
+                    mode.run = mo_warming_down;
                     timer_start = 0;
                     signal_green(SHORT);  signal_buz(LONG);
                     if (mode.print) printf ("Включен режим Остановки\r\n");
@@ -397,26 +398,23 @@ void event_processing(void) {
         case ev_end_to:
             timer_start_to = 0;
             timer_stop_to = 0;
-            mode.run = mo_stop;
+            switch_mode_run(mo_stop);
             event = ev_none;
             prim_par.TO.status = 0;
             printf("Конец ТО КРАНА." );
             break;
         case ev_alarm1:   // Пожар, перегрев вентилятора, авария частотника
             signal_red(ON); signal_buz(MEANDR);
-            mode.run = mo_stop;
-            mode.fan = 0;
+            switch_mode_run(mo_stop);
             if (prim_par.season) mode.pomp = 1; // Проверить
             TAP_ANGLE = PWM_MAX;
-            signal_green(OFF);
             alarm_reg(0, 1, get_warning_str(0), 0);
             printf ("Авария: %s\r\n", get_warning_str(0));
             event = ev_none;
             break;
         case ev_alarm2:   // Угроза замораживания от внешнего датчика
             signal_red(ON); signal_buz(MEANDR);
-            mode.run = mo_stop;
-            mode.fan = 0;
+            switch_mode_run(mo_stop);
             mode.pomp = 1;
             TAP_ANGLE = PWM_MAX;
             alarm_reg(0, 1, get_warning_str(1), 1);
@@ -427,8 +425,7 @@ void event_processing(void) {
             alarm_reg(0, 1, get_warning_str(2), 2);
             signal_red(ON);
             signal_buz(MEANDR);
-            mode.run = mo_stop; // Режим оттаивания
-            mode.fan = 0;
+            switch_mode_run(mo_stop);
             if (prim_par.season) mode.pomp = 1;
             TAP_ANGLE = PWM_MAX;
             printf ("АВАРИЯ: %s\r\n", get_warning_str(2));
@@ -437,9 +434,7 @@ void event_processing(void) {
         case ev_freezing2: // Температура в помещения ниже критической POM_T
             alarm_reg(0, 1, get_warning_str(3), 3);
             signal_red(ON); signal_buz(MEANDR);
-            signal_green(OFF);
-            mode.run = mo_stop;  // Режим оттаивания
-            mode.fan = 0;
+            switch_mode_run(mo_stop);
             if (prim_par.season) mode.pomp = 1;
             TAP_ANGLE = PWM_MAX;
             printf ("АВАРИЯ: %s\r\n", get_warning_str(3));
@@ -448,9 +443,7 @@ void event_processing(void) {
         case ev_freezing3: // Температура воды обратки ниже критической POM_T
             alarm_reg(0, 1, get_warning_str(5), 5);
             signal_red(ON); signal_buz(MEANDR);
-            signal_green(OFF);
-            mode.run = mo_stop;  // Режим оттаивания
-            mode.fan = 0;
+            switch_mode_run(mo_stop);
             if (prim_par.season) mode.pomp = 1;
             TAP_ANGLE = PWM_MAX;
             printf ("АВАРИЯ: %s\r\n", get_warning_str(5));
@@ -459,9 +452,7 @@ void event_processing(void) {
         case ev_term1_nf:   // Термометр В1 помещение
             alarm_reg(MAX_OFFLINES, termometers[0].err, get_warning_str(7), 7);
             signal_red(ON); signal_buz(MEANDR);
-            signal_green(OFF);
-            mode.run = mo_stop;
-            mode.fan = 0;
+            switch_mode_run(mo_stop);
             if (prim_par.season) mode.pomp = 1;
             TAP_ANGLE = PWM_MAX;
             printf ("АВАРИЯ: %s\r\n", get_warning_str(7));
@@ -470,9 +461,7 @@ void event_processing(void) {
         case ev_term2_nf:  // Термометр В2 Улица
             alarm_reg(MAX_OFFLINES, termometers[1].err, get_warning_str(8), 8);
             signal_red(LONG); signal_buz(MEANDR);
-            signal_green(OFF);
-            mode.run = mo_stop;
-            mode.fan = 0;
+            switch_mode_run(mo_stop);
             if (prim_par.season) mode.pomp = 1;
             TAP_ANGLE = PWM_MAX;
             printf ("АВАРИЯ: %s\r\n", get_warning_str(8));
@@ -487,9 +476,7 @@ void event_processing(void) {
         case ev_term4_nf:  // Термометр В4 Обратка
             alarm_reg(MAX_OFFLINES, termometers[3].err, get_warning_str(10), 10);
             signal_red(LONG); signal_buz(MEANDR);
-            signal_green(OFF);
-            mode.run = mo_stop;
-            mode.fan = 0;
+            switch_mode_run(mo_stop);
             if (prim_par.season) mode.pomp = 1;
             TAP_ANGLE = PWM_MAX;
             printf ("АВАРИЯ: %s\r\n", get_warning_str(10));
@@ -545,6 +532,20 @@ void mode_processing(void) {
 
     }
 }
+/*         */
+void switch_mode_run(enum en_mode newstatus) {
+    if ((unsigned char)mode.run <= 4) mode.lastrun = mode.run;
+    mode.run = newstatus;
+    switch (mode.run) {
+        case mo_stop:
+            signal_green(OFF);
+            mode.fan = 0;           // Выключение Вентилятора
+        case mo_action:
+            signal_green(ON);
+            break;
+        default: break;
+    } 
+} 
 // Печать всех термометров. mode - режим печати адресов термометров. Если не 0 - печатать адреса.
 void printallterms(unsigned char print_addr) {
     int term;
