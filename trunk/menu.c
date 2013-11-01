@@ -473,11 +473,11 @@ char *par_str(struct st_parameter *st_pointer, unsigned char only_val, int pr_da
             MAIN_MODE = (int)mode.run;
             // Åñëè óêàçàí òèï ğåæèì, òî ïå÷àòàåì ñî ñëîâàìè
             switch (pr_data) {
-                case 0: sprintf(linestr, "%sÑÒÎÏ   ", pr_name); break;  // mode.run = mo_stop;
-                case 1: sprintf(linestr, "%sÏÓÑÊ   ", pr_name); break;  // mode.run = mo_action;
-                case 2: sprintf(linestr, "%sÒÎ     ", pr_name); break;  // mode.run = mo_to;
-                case 3: sprintf(linestr, "%sÏĞÎÃĞÅÂ", pr_name); break;  // mode.run = mo_warming_up;
-                case 4: sprintf(linestr, "%sÎÑÒÀÍÎÂ", pr_name); break;  // mode.run = mo_warming_down;
+                case 0: sprintf(linestr, "%sÑÒÎÏ   ", pr_name); break;  // mo_stop;
+                case 1: sprintf(linestr, "%sÏÓÑÊ   ", pr_name); break;  // mo_action;
+                case 2: sprintf(linestr, "%sÒÎ     ", pr_name); break;  // mo_to;
+                case 3: sprintf(linestr, "%sÏĞÎÃĞÅÂ", pr_name); break;  // mo_warming_up;
+                case 4: sprintf(linestr, "%sÎÑÒÀÍÎÂ", pr_name); break;  // mo_warming_down;
                 default: break;
             };
             break;
@@ -757,25 +757,21 @@ void lcd_edit(signed char direction) {
             if (curr_menu.val_data <= prim_par.tap_angle) curr_menu.val_data = prim_par.tap_angle;
             break;
         case e_ADC1: // ïåğåíåñ èç boiler-control 15.05.2013
-            if ((unsigned char)mode.run <= 4) mode.lastrun = mode.run; 
-            mode.run = mo_setup_input1;
+            switch_mode_run(mo_setup_input1);
             curr_menu.val_data = ADC_VAR1;
             break;
         case e_ADC2:
-            if ((unsigned char)mode.run <= 4) mode.lastrun = mode.run; 
-            mode.run = mo_setup_input2;
+            switch_mode_run(mo_setup_input2);
             curr_menu.val_data = ADC_VAR2;
             break;
         case e_PWM1:
-            if ((unsigned char)mode.run <= 4) mode.lastrun = mode.run; 
-            mode.run = mo_setup_output1;
+            switch_mode_run(mo_setup_output1);
             curr_menu.val_data += direction;
             if (curr_menu.val_data < 0 ) curr_menu.val_data = 0;
             if (curr_menu.val_data > 0xFF) curr_menu.val_data = 0xFF;
             break;
         case e_PWM2:
-            if ((unsigned char)mode.run <= 4) mode.lastrun = mode.run; 
-            mode.run = mo_setup_output2;
+            switch_mode_run(mo_setup_output2);
             curr_menu.val_data += direction;
             if (curr_menu.val_data < 0 ) curr_menu.val_data = 0;
             if (curr_menu.val_data > 0xFF) curr_menu.val_data = 0xFF;

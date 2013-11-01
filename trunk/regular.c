@@ -80,19 +80,15 @@ void regular_inspection(void) {
              #ifndef NODEBUG
              printf ("ПУСК \r\n");
              #endif
-             mode.run = mo_action;  // Включаем режим Пуск
+             switch_mode_run(mo_action);        // Включаем режим Пуск
              count_fan = 0;
-             signal_green(ON);
         }
     }
     if (timer_stop) {
         timer_stop--;
         // Если достигли нуля, то выключаем вентилятор
         if (!timer_stop && (mode.run == mo_warming_down)) {          // event = ev_timer_Stop;
-            mode.run = mo_stop;
-            mode.fan = 0;           // Выключение насоса
-            // printf ("Остановили Вентилятор Режим СТОП \r\n");
-            signal_green(OFF);
+            switch_mode_run(mo_stop);
         }
     }
      // Пока timer1_counter > 0, уменьшаем его значение
