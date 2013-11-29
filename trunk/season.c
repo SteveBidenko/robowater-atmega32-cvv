@@ -101,6 +101,7 @@ void winter_regulator (void) {
     if (!prim_par.season) return;   // защита от дурака-программиста
     //  Вызываем функции регулирования только, если пришло время
     if (time_integration == 0) {
+        prim_par.Ki = prim_par.Kd = 0;  // Заглушка, чтобы работала только функция update_P(). После отладки ПИД регулирования закомментировать эту строку. 
         if ((prim_par.Ki == 0) && (prim_par.Kd == 0)) {
             if (abs(SET_T - POM_T) > prim_par.dt_winter) {
                 TAP_ANGLE += update_P(SET_T, POM_T, prim_par.Ku, prim_par.PWM1_hi - prim_par.PWM1_lo);
