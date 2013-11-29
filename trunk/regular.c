@@ -145,6 +145,7 @@ void regular_inspection(void) {
             break;
         case mo_setup_input1:
         case mo_setup_input2:
+            if (mode.menu == 2) lcd_edit(0); 
         case mo_setup_output1:
         case mo_setup_output2:
             if (mode.menu == 0) mode.run = mode.lastrun;    // Если вышли из меню, пытаемся восстановить последний режим
