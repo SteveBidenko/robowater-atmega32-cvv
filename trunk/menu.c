@@ -23,7 +23,7 @@ struct st_parameter main_menu[NUM_MENU]= {   // Меню первого уровня
     {0, e_dt, 1, 4},                  // [3] Установка даты и времени
     {0, e_empty, 1, 5},               // [4] Вход в меню просмотра параметров
     {0, e_alarm, 0, 6},               // [5] АВАРИЙ НЕТ (при отладке программы установить {0, e_alarm, 1, 6})
-    {0, e_empty, 1, 7}                // [6] Вход в меню тонких настроек (при отладке программы установить {0, e_empty, 1, 7})
+    {0, e_empty, 0, 7}                // [6] Вход в меню тонких настроек (при отладке программы установить {0, e_empty, 1, 7})
 };
 
 struct st_parameter sdt[NUM_DT]= {   // Меню Установки времени и даты
@@ -834,7 +834,7 @@ void lcd_edit(signed char direction) {
             break;
         case e_password:
             curr_menu.val_data += direction;
-            ALARMS_OPEN = SETTINGS_OPEN = (curr_menu.val_data == 20);
+            SETTINGS_OPEN = (curr_menu.val_data == 20);
             if (curr_menu.val_data < 0) curr_menu.val_data = 99;
             if (curr_menu.val_data > 99) curr_menu.val_data = 0;
             break;
