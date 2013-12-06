@@ -30,7 +30,6 @@
 #define FORCE_INIT 1
 #define ALL_WARNINGS 12
 #define ENTER_CANCEL_OVERFLOW 2      // Задается в кол-ве полсекундных интервалов
-#define TIME_START 10                // Время старта Задается в кол-ве секундных интервалов (was 180)
 #define TIME_STOP 10                 // Время остановки Задается в кол-ве секундных интервалов
 #define TIME_COOL_STOP 60            // Время таймаута для регулировки температуры калорифера в режиме СТОП
 #define TIME_BUZ1 1                  // Время Звука 1
@@ -116,7 +115,8 @@ extern struct st_eeprom_par {
     byte tap_angle, fan_speed, ADC1, ADC2;        // 0x7F, 205, 0x7F, 0x7F, [4]
     int dt_winter, dt_summer;  
     int Ku, Ki, Kd;                             // 10, 0, 0 [6]
-    int T_z, T_int;                             // 300, 100 [4] Время задержки, Время интегрирования
+    int T_z, T_int;                             // Время интегртрования летом, Время интегрирования зимой
+    byte T_start;                               // Время прогрева при старте системы. По умолчанию: 180 
     int TW_out_Min, TW_out_Stop;                // 1500, 5000,
     int TA_in_Min, TA_out_Min, TA_out_prs;    //-1500, 1000, 2200   [10]
     // перенес из boiler-control 15.05.2013

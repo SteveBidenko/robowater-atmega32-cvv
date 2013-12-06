@@ -5,7 +5,7 @@
 // Определение макроподстановок
 #define NUM_MENU        7
 #define NUM_PARAMETERS  11
-#define NUM_SETTINGS    30
+#define NUM_SETTINGS    31
 #define NUM_DT 7
 
 #define SYNC_TO_MENU 1

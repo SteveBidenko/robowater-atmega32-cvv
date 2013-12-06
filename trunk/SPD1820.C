@@ -58,7 +58,7 @@ void rectification(int unconverted, unsigned char index, unsigned char measure_m
     if (measure_mode == INIT_MODE) {
         termometers[index].err = (unconverted == NOT_FOUND) ? MAX_OFFLINES : 0;
     } else {
-        if ((unconverted == NOT_FOUND) && (termometers[index].err >= MAX_OFFLINES)) {
+        if ((unconverted == NOT_FOUND) && (termometers[index].err <= MAX_OFFLINES)) {
             termometers[index].err++;
         } else {
             termometers[index].err = 0;

@@ -19,7 +19,7 @@
 #include "fan.h"
 // Локальные макроподстановки
 #define MAJOR_VERSION 5
-#define MINOR_VERSION 14
+#define MINOR_VERSION 16
 // #define NODEBUG
 // enum
 // Определение главных структур
@@ -40,6 +40,7 @@ struct st_eeprom_par prim_par = {
     100, 100,                           // int dt_winter, dt_summer;
     (int)10, 0, 0,                      // int Ku, Ki, Kd;
     (int)180, (int)100,
+    180,                                // byte T_start
     (int)1500, (int)5000,
     (int)-2000, (int)1000, (int)2200,
     48, 250, 48, 250, 48, 250, 48, 250,  // Установка границ вольтажа входов и выходов
@@ -105,19 +106,29 @@ struct st_eeprom_par prim_par = {
      {0x28,0xd6,0x3a,0x7e,0x03,0x00,0x00,0x08,0x01}, // 28  D6  3A  7E  3   0   0   8   1	FF	FD   Улица
      {0x28,0x4f,0x4c,0x7e,0x03,0x00,0x00,0xde,0x01}, // 28  4F  4C  7E  3   0   0   DE  1	FF	FC   Вода ВХОД
      {0x28,0x0a,0x3e,0x7e,0x03,0x00,0x00,0xae,0x01}  // 28  A   3E  7E  3   0   0   AE  1   FF	FB   Вода выход
-     */
      // Лабораторный вариант 1
      {0x28,0x6D,0x3F,0x94,0x03,0x00,0x00,0x77,0x01}, // 28  6D  3F  94  03  00  00  77  1	FF	FE   Помещение
      {0x28,0x9D,0x41,0x94,0x03,0x00,0x00,0xCA,0x01}, // 28  9D  41  94  03  00  00  CA  1	FF	FD   Улица
      {0x28,0xF7,0xFF,0x93,0x03,0x00,0x00,0xAD,0x01}, // 28  F7  FF  93  03  00  00  AD  1	FF	FC   Вода ВХОД
      {0x28,0xA9,0x29,0x94,0x03,0x00,0x00,0xD4,0x01}  // 28  A9  29  94  03  00  00  D4  1   FF	FB   Вода выход
-     /*
+
      // Лабораторный вариант 2
      {0x28,0xc2,0x14,0x7e,0x03,0x00,0x00,0xd5,0x01}, // 28  C2  14  7E  3   0   0   D5  1	FF	FE   Помещение
      {0x28,0xd6,0x3a,0x7e,0x03,0x00,0x00,0x08,0x01}, // 28  D6  3A  7E  3   0   0   8   1	FF	FD   Улица
      {0x28,0x4f,0x4c,0x7e,0x03,0x00,0x00,0xde,0x01}, // 28  4F  4C  7E  3   0   0   DE  1	FF	FC   Вода ВХОД
      {0x28,0x0a,0x3e,0x7e,0x03,0x00,0x00,0xae,0x01}  // 28  A   3E  7E  3   0   0   AE  1 FF	FB   Вода выход
+     //Донецк
+     {0x28,0x6a,0x22,0x94,0x03,0x00,0x00,0x62,0x01}, // 28  6A  22  94  03  00  00  62  1	FF	FE   Помещение
+     {0x28,0x93,0x10,0x94,0x03,0x00,0x00,0x81,0x01}, // 28  93  10  94  03  00  00  81  1	FF	FD   Улица
+     {0x28,0x03,0x42,0x94,0x03,0x00,0x00,0x26,0x01}, // 28  03  42  94  03  00  00  26  1	FF	FC   Вода ВХОД
+     {0x28,0xe4,0x09,0x94,0x03,0x00,0x00,0x13,0x01}  // 28  E4  09  94  03  00  00  13  1 FF	FB   Вода выход  
      */
+     // Краснооктябрьская 90 ПВ1
+     {0x28,0x00,0x12,0x94,0x03,0x00,0x00,0xea,0x01}, // 28  00  12  94  03  00  00  EA  1	FF	FE   Помещение
+     {0x28,0xab,0x42,0x94,0x03,0x00,0x00,0xdb,0x01}, // 28  AB  42  94  03  00  00  DB  1	FF	FD   Улица
+     {0x28,0xbd,0xf6,0x93,0x03,0x00,0x00,0xe4,0x01}, // 28  BD  F6  93  03  00  00  E4  1	FF	FC   Вода ВХОД
+     {0x28,0x02,0xf5,0x93,0x03,0x00,0x00,0x89,0x01}  // 28  02  F5  93  03  00  00  89  1   FF	FB   Вода выход
+
     }
 };
 unsigned char size_prim_par;        // Почти константа. Нужна для функций записи/чтения из/в EEPROM
@@ -130,7 +141,7 @@ flash help_str all_help_str[HELP_LINES] = {
 "z - общее состояние системы",                                          // [0]
 "s - переключение звука",                                               // [1]
 "w - печать номера текущего события",                                   // [2]
-"x -переключение печати",                                               // [3]
+"x - переключение печати",                                              // [3]
 "v - печать адресов термометров (ds1820_rom_codes)",                    // [4]
 "b - печать адресов не определенных термометров (ufo)",                 // [5]
 "e - печать журнала последних аварий",                                  // [6]
@@ -138,7 +149,7 @@ flash help_str all_help_str[HELP_LINES] = {
 "\\ - ручной поиск новых термометров",                                  // [8]
 "с - печать структуры prim_par",                                        // [9]
 "m - печать текущих параметров системы",                                // [10]
-"n -печать состояния системы",                                          // [11]
+"n - печать состояния системы",                                         // [11]
 "0..3 - поиск адреса термометра из prim_par.addr в ds1820_rom_codes",   // [12]
 "9 - вывод всей структуры сигналов",                                    // [13]
 };
@@ -310,8 +321,7 @@ void event_processing(void) {
                         signal_white(ON);
                         mode.pomp = 1;
                         mode.run = mo_warming_up;     // Устанавливаем режим Прогрев
-                        timer_start = TIME_START;
-                        //timer_start = prim_par.T_z; // TIMER_INACTIVE  ...Запускаем таймер STRT
+                        timer_start = prim_par.T_start; // Запускаем таймер STRT
                         TAP_ANGLE = PWM_MAX;
                         printf("Включен режим Прогрев. Время прогрева = %d\r\n", timer_start);
                         signal_green(SHORT);
@@ -566,9 +576,9 @@ void printallterms(unsigned char print_addr) {
         // эквивалентно ds1820_get_alarm(&ds1820_rom_codes[i][0], &tl, &th);
         if (print_addr) {
             address_line = address_to_LCD (ds1820_rom_codes[i]);
-            printf("[%s:%d:%d] ", address_line, tl, th);
+            printf("%s:%d ", address_line, termometers[i].err);
         } else {
-            printf(" t%-u = %i(%-i.%-u)C[%02X%02X:%02x]%d:%d; ", i+1, term, term/100, abs(term%100), spd[1], spd[0], resolution, tl, th);
+            printf(" t%-u = %i(%-i.%-u)C[%02X%02X:%02x] err:%d; ", i+1, term, term/100, abs(term%100), spd[1], spd[0], resolution, termometers[i].err);
         }
     }
     printf("\r\n");

@@ -22,7 +22,7 @@ struct st_parameter main_menu[NUM_MENU]= {   // Меню первого уровня
     {1, e_winter, 0, 3},              // [2] ЗИМА
     {0, e_dt, 1, 4},                  // [3] Установка даты и времени
     {0, e_empty, 1, 5},               // [4] Вход в меню просмотра параметров
-    {0, e_alarm, 1, 6},               // [5] АВАРИЙ НЕТ (при отладке программы установить {0, e_alarm, 1, 6})
+    {0, e_alarm, 0, 6},               // [5] АВАРИЙ НЕТ (при отладке программы установить {0, e_alarm, 1, 6})
     {0, e_empty, 1, 7}                // [6] Вход в меню тонких настроек (при отладке программы установить {0, e_empty, 1, 7})
 };
 
@@ -80,7 +80,8 @@ struct st_parameter settings[NUM_SETTINGS]={
     {0, e_hour, 1, 52},             // [26] Установка часа проведения ТО Крана
     {0, e_minute, 1, 53},           // [27] Установка минуты проведения ТО Крана
     {0, e_temperature, 1, 31},      // [28] Дельта лето dt_summer;
-    {0, e_temperature, 1, 32}       // [29] Дельта зима dt_winter;
+    {0, e_temperature, 1, 32},      // [29] Дельта зима dt_winter;
+    {180, e_stime, 1, 56}           // [30] Время прогрева при старте системы  
 };
 #define WARNING_POS 61
 struct st_parameter warnings[MAX_WARNINGS] = {
@@ -132,14 +133,14 @@ flash lcd_str all_menu_str[] = {
         "Дt Зима=",     // [31] t_winter_sensitivity;
         "Сезон=",       // [32]
         "Пароль=",      // [33]
-        "DEL Пом.",     // [34] Важен порядок следования, т.е. с 34 - по 41 должны идти 4 термомтера подряд
-        "SET Пом.",     // [35]
-        "DEL Ул.",      // [36]
-        "SET Ул.",      // [37]
-        "DEL WIn",      // [38]
-        "SET WIn",      // [39]
-        "DEL WOut",     // [40]
-        "SET WOut",     // [41]
+        "DEL TE1 Пом.",     // [34] Важен порядок следования, т.е. с 34 - по 41 должны идти 4 термомтера подряд
+        "SET TE1 Пом.",     // [35]
+        "DEL TE2 Ул.",      // [36]
+        "SET TE2 Ул.",      // [37]
+        "DEL TE3 WIn",      // [38]
+        "SET TE3 WIn",      // [39]
+        "DEL TE4 WOut",     // [40]
+        "SET TE4 WOut",     // [41]
         "Вых1.сн.=",    // [42] Установление вых1 напряжение снизу
         "Вых1.св.=",    // [43] Установление вых1 напряжение сверху
         "Вх1.сн.=",     // [44] Установление вх1 напряжение снизу
@@ -152,7 +153,8 @@ flash lcd_str all_menu_str[] = {
         "Час ТО=",      // [51] Установка часа проведения ТО Крана
         "Минут ТО=",    // [52] Установка минуты проведения ТО Крана
         "Ki=",          // [53]
-        "Kd="           // [54]
+        "Kd=",          // [54]
+        "Прогрев="      // [55]
 };
 char linestr[20];           // Строка для LCD
 bit need_eeprom_write;      // Флаг, если необходимо записать в EEPROM
@@ -187,6 +189,7 @@ void sync_set_par(byte sync) {
         settings[27].val_data = prim_par.TO.minute;
         settings[28].val_data = prim_par.dt_summer;
         settings[29].val_data = prim_par.dt_winter;
+        settings[30].val_data = prim_par.T_start;
 
         // Здесь будет разрешение/запрет на редактирование в меню
         for (i = 0; i < MAX_DS1820; i++) {
@@ -308,6 +311,9 @@ void sync_set_par(byte sync) {
             }
             if (prim_par.dt_winter != settings[29].val_data) { 
                 prim_par.dt_winter = settings[29].val_data; need_eeprom_write = 1;
+            }
+            if (prim_par.T_start != settings[30].val_data) { 
+                prim_par.T_start = settings[30].val_data; need_eeprom_write = 1;
             }
             // Проверяем часть меню, где идет управление термометрами
             for (i = 0; i < MAX_DS1820; i++) {
